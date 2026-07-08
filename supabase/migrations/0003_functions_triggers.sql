@@ -206,3 +206,4 @@ $$;
 
 -- Only the service role provisions tenants (not exposed to anon/authenticated).
 revoke all on function public.provision_tenant(uuid, text, citext, jsonb, text) from public;
+grant execute on function public.provision_tenant(uuid, text, citext, jsonb, text) to service_role;
