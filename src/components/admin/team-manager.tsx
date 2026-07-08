@@ -104,9 +104,10 @@ export function TeamManager({ viewerRole }: { viewerRole: TeamRole }) {
               <Field
                 label="Name"
                 name="name"
+                required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Optional"
+                placeholder="Full name"
               />
               <Field
                 label="Email"
