@@ -57,6 +57,36 @@ export type RevenueSummary = {
   failedCount: number;
 };
 
+// --- Bookings (consultations) ---
+
+export type Booking = Database['public']['Tables']['bookings']['Row'];
+export type BookingStatus = Database['public']['Enums']['booking_status'];
+export type AvailabilityRule = Database['public']['Tables']['availability_rules']['Row'];
+export type BookingSettingsRow = Database['public']['Tables']['booking_settings']['Row'];
+
+/** `GET /api/bookings` enriches each booking with client, product and coach. */
+export type BookingWithRelations = Booking & {
+  client: { full_name: string; email: string | null } | null;
+  product: { name: string; type: ProductType } | null;
+  team_member: { role: TeamRole } | null;
+};
+
+/** `GET /api/bookings/slots` → `{ slots }`. */
+export type Slot = { start: string; end: string };
+
+/** `GET /api/coaches` → minimal bookable-coach subset (no PII). */
+export type Coach = { id: string; name: string; role: TeamRole };
+
+export const WEEKDAY_LABELS = [
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+];
+
 export const PRODUCT_TYPES: ProductType[] = ['course', 'live_class', 'consultation', 'merch'];
 
 export const BILLING_CYCLES: BillingCycle[] = [

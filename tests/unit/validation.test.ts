@@ -6,6 +6,9 @@ import {
   productCreateSchema,
   orderCreateSchema,
   refundSchema,
+  availabilityCreateSchema,
+  bookingCreateSchema,
+  bookingUpdateSchema,
 } from '@/lib/validation';
 
 describe('subdomainSchema', () => {
@@ -99,5 +102,54 @@ describe('refundSchema', () => {
     expect(refundSchema.safeParse({}).success).toBe(true);
     expect(refundSchema.safeParse({ amountMinor: 5000 }).success).toBe(true);
     expect(refundSchema.safeParse({ amountMinor: -1 }).success).toBe(false);
+  });
+});
+
+const UUID = '11111111-1111-1111-1111-111111111111';
+
+describe('availabilityCreateSchema', () => {
+  it('accepts a valid weekly window', () => {
+    expect(
+      availabilityCreateSchema.safeParse({
+        teamMemberId: UUID,
+        weekday: 1,
+        startTime: '09:00',
+        endTime: '17:00',
+      }).success,
+    ).toBe(true);
+  });
+
+  it('rejects a bad weekday, malformed time or end<=start', () => {
+    expect(
+      availabilityCreateSchema.safeParse({ teamMemberId: UUID, weekday: 7, startTime: '09:00', endTime: '10:00' }).success,
+    ).toBe(false);
+    expect(
+      availabilityCreateSchema.safeParse({ teamMemberId: UUID, weekday: 1, startTime: '9am', endTime: '10:00' }).success,
+    ).toBe(false);
+    expect(
+      availabilityCreateSchema.safeParse({ teamMemberId: UUID, weekday: 1, startTime: '12:00', endTime: '10:00' }).success,
+    ).toBe(false);
+  });
+});
+
+describe('bookingCreateSchema', () => {
+  it('requires a uuid coach and an ISO datetime', () => {
+    expect(
+      bookingCreateSchema.safeParse({ teamMemberId: UUID, slotStart: '2026-06-01T10:00:00Z' }).success,
+    ).toBe(true);
+    expect(
+      bookingCreateSchema.safeParse({ teamMemberId: 'nope', slotStart: '2026-06-01T10:00:00Z' }).success,
+    ).toBe(false);
+    expect(
+      bookingCreateSchema.safeParse({ teamMemberId: UUID, slotStart: '2026-06-01' }).success,
+    ).toBe(false);
+  });
+});
+
+describe('bookingUpdateSchema', () => {
+  it('needs at least one field and a valid status', () => {
+    expect(bookingUpdateSchema.safeParse({}).success).toBe(false);
+    expect(bookingUpdateSchema.safeParse({ status: 'cancelled' }).success).toBe(true);
+    expect(bookingUpdateSchema.safeParse({ status: 'scheduled' }).success).toBe(false);
   });
 });

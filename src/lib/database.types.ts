@@ -146,6 +146,95 @@ export type Database = {
           },
         ]
       }
+      availability_rules: {
+        Row: {
+          created_at: string
+          end_time: string
+          id: string
+          start_time: string
+          team_member_id: string
+          tenant_id: string
+          updated_at: string
+          weekday: number
+        }
+        Insert: {
+          created_at?: string
+          end_time: string
+          id?: string
+          start_time: string
+          team_member_id: string
+          tenant_id: string
+          updated_at?: string
+          weekday: number
+        }
+        Update: {
+          created_at?: string
+          end_time?: string
+          id?: string
+          start_time?: string
+          team_member_id?: string
+          tenant_id?: string
+          updated_at?: string
+          weekday?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "availability_rules_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "availability_rules_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      booking_settings: {
+        Row: {
+          buffer_minutes: number
+          cancel_cutoff_minutes: number
+          created_at: string
+          min_notice_minutes: number
+          slot_minutes: number
+          tenant_id: string
+          timezone: string
+          updated_at: string
+        }
+        Insert: {
+          buffer_minutes?: number
+          cancel_cutoff_minutes?: number
+          created_at?: string
+          min_notice_minutes?: number
+          slot_minutes?: number
+          tenant_id: string
+          timezone?: string
+          updated_at?: string
+        }
+        Update: {
+          buffer_minutes?: number
+          cancel_cutoff_minutes?: number
+          created_at?: string
+          min_notice_minutes?: number
+          slot_minutes?: number
+          tenant_id?: string
+          timezone?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bookings: {
         Row: {
           calendar_event_id: string | null
