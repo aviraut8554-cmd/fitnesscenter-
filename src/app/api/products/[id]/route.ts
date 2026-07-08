@@ -1,5 +1,5 @@
 import type { Database, Json } from '@/lib/database.types';
-import { requireTeamMember } from '@/lib/auth';
+import { requireTeamMember, requireTenantActor } from '@/lib/auth';
 import { ApiError, handleRoute, jsonOk, parseJson } from '@/lib/http';
 import { productUpdateSchema } from '@/lib/validation';
 
@@ -8,11 +8,14 @@ export const dynamic = 'force-dynamic';
 type ProductUpdate = Database['public']['Tables']['products_services']['Update'];
 type Ctx = { params: Promise<{ id: string }> };
 
-/** Fetch a single product/service in the caller's tenant. */
+/**
+ * Fetch a single product/service in the caller's tenant. Reachable by team
+ * members and clients; RLS hides inactive items from clients.
+ */
 export async function GET(request: Request, ctx: Ctx): Promise<Response> {
   return handleRoute(async () => {
     const { id } = await ctx.params;
-    const { supabase, tenantId } = await requireTeamMember(request);
+    const { supabase, tenantId } = await requireTenantActor(request);
 
     const { data, error } = await supabase
       .from('products_services')

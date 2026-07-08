@@ -1,5 +1,5 @@
 import type { Database, Json } from '@/lib/database.types';
-import { requireTeamMember } from '@/lib/auth';
+import { requireTeamMember, requireTenantActor } from '@/lib/auth';
 import { ApiError, handleRoute, jsonOk, parseJson } from '@/lib/http';
 import { productCreateSchema } from '@/lib/validation';
 
@@ -8,11 +8,12 @@ type ProductType = Database['public']['Enums']['product_type'];
 export const dynamic = 'force-dynamic';
 
 /**
- * List products/services for the caller's tenant. RLS scopes visibility:
- * team members see all; clients see only active items.
+ * List products/services for the caller's tenant. Reachable by both team
+ * members and clients; RLS scopes visibility: team members see all, clients see
+ * only active items (so they can browse the catalogue before checkout).
  */
 export const GET = handleRoute(async (request) => {
-  const { supabase, tenantId } = await requireTeamMember(request);
+  const { supabase, tenantId } = await requireTenantActor(request);
 
   const url = new URL(request.url);
   const type = url.searchParams.get('type');
