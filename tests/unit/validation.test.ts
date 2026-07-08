@@ -9,6 +9,10 @@ import {
   availabilityCreateSchema,
   bookingCreateSchema,
   bookingUpdateSchema,
+  classCreateSchema,
+  classSessionCreateSchema,
+  enrollmentCreateSchema,
+  attendanceMarkSchema,
 } from '@/lib/validation';
 
 describe('subdomainSchema', () => {
@@ -151,5 +155,48 @@ describe('bookingUpdateSchema', () => {
     expect(bookingUpdateSchema.safeParse({}).success).toBe(false);
     expect(bookingUpdateSchema.safeParse({ status: 'cancelled' }).success).toBe(true);
     expect(bookingUpdateSchema.safeParse({ status: 'scheduled' }).success).toBe(false);
+  });
+});
+
+describe('classCreateSchema', () => {
+  it('requires a title and defaults isRecorded to false', () => {
+    const ok = classCreateSchema.safeParse({ title: 'HIIT' });
+    expect(ok.success).toBe(true);
+    if (ok.success) expect(ok.data.isRecorded).toBe(false);
+    expect(classCreateSchema.safeParse({ title: '' }).success).toBe(false);
+    expect(classCreateSchema.safeParse({ title: 'x', instructorId: 'nope' }).success).toBe(false);
+  });
+});
+
+describe('classSessionCreateSchema', () => {
+  it('requires end after start and rejects non-URL links', () => {
+    expect(
+      classSessionCreateSchema.safeParse({
+        startsAt: '2026-06-01T10:00:00Z',
+        endsAt: '2026-06-01T11:00:00Z',
+      }).success,
+    ).toBe(true);
+    expect(
+      classSessionCreateSchema.safeParse({
+        startsAt: '2026-06-01T11:00:00Z',
+        endsAt: '2026-06-01T10:00:00Z',
+      }).success,
+    ).toBe(false);
+    expect(
+      classSessionCreateSchema.safeParse({
+        startsAt: '2026-06-01T10:00:00Z',
+        endsAt: '2026-06-01T11:00:00Z',
+        liveLink: 'not-a-url',
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe('enrollmentCreateSchema & attendanceMarkSchema', () => {
+  it('validate ids and status enums', () => {
+    expect(enrollmentCreateSchema.safeParse({ clientId: UUID }).success).toBe(true);
+    expect(enrollmentCreateSchema.safeParse({ clientId: 'nope' }).success).toBe(false);
+    expect(attendanceMarkSchema.safeParse({ clientId: UUID, status: 'present' }).success).toBe(true);
+    expect(attendanceMarkSchema.safeParse({ clientId: UUID, status: 'here' }).success).toBe(false);
   });
 });

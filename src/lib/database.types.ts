@@ -417,6 +417,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          instructor_id: string | null
           is_recorded: boolean
           product_id: string | null
           schedule: Json
@@ -429,6 +430,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          instructor_id?: string | null
           is_recorded?: boolean
           product_id?: string | null
           schedule?: Json
@@ -441,6 +443,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          instructor_id?: string | null
           is_recorded?: boolean
           product_id?: string | null
           schedule?: Json
@@ -449,6 +452,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "classes_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "classes_product_id_fkey"
             columns: ["product_id"]
@@ -511,6 +521,58 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "clients_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      enrollments: {
+        Row: {
+          class_id: string
+          client_id: string
+          created_at: string
+          id: string
+          status: Database["public"]["Enums"]["enrollment_status"]
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          class_id: string
+          client_id: string
+          created_at?: string
+          id?: string
+          status?: Database["public"]["Enums"]["enrollment_status"]
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          class_id?: string
+          client_id?: string
+          created_at?: string
+          id?: string
+          status?: Database["public"]["Enums"]["enrollment_status"]
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enrollments_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollments_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -1426,6 +1488,7 @@ export type Database = {
         | "no_show"
         | "rescheduled"
       client_status: "trial" | "active" | "renewal_due" | "expired" | "churned"
+      enrollment_status: "active" | "cancelled" | "completed"
       invoice_status: "draft" | "issued" | "paid" | "void" | "refunded"
       order_status:
         | "created"
@@ -1605,6 +1668,7 @@ export const Constants = {
         "rescheduled",
       ],
       client_status: ["trial", "active", "renewal_due", "expired", "churned"],
+      enrollment_status: ["active", "cancelled", "completed"],
       invoice_status: ["draft", "issued", "paid", "void", "refunded"],
       order_status: [
         "created",
