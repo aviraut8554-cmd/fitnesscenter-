@@ -9,7 +9,7 @@ import {
   TRIGGER_LABELS,
   TRIGGER_VARIABLES,
   type Template,
-} from '@/lib/automation';
+} from '@/lib/automation-templates';
 import { Alert, Badge, Button, Card } from '@/components/ui';
 
 const CHANNELS: AutomationChannel[] = ['email', 'whatsapp'];
