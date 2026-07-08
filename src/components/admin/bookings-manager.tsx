@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiClientError } from '@/lib/api';
 import {
+  type BookingSettingsRow,
   type BookingWithRelations,
   type Client,
   type Slot,
@@ -30,6 +31,7 @@ export function BookingsManager({ viewerRole }: { viewerRole: TeamRole }) {
   const canManage = viewerRole === 'owner' || viewerRole === 'manager';
 
   const [bookings, setBookings] = useState<BookingWithRelations[] | null>(null);
+  const [tz, setTz] = useState<string | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -54,6 +56,10 @@ export function BookingsManager({ viewerRole }: { viewerRole: TeamRole }) {
         setBookings([]);
         setError(err instanceof ApiClientError ? err.message : 'Could not load bookings');
       });
+    api
+      .get<{ settings: BookingSettingsRow }>('/api/booking-settings')
+      .then((d) => !cancelled && setTz(d.settings.timezone))
+      .catch(() => undefined);
     return () => {
       cancelled = true;
     };
@@ -98,7 +104,7 @@ export function BookingsManager({ viewerRole }: { viewerRole: TeamRole }) {
                     </span>
                     <BookingStatusBadge status={b.status} />
                   </div>
-                  <p className="mt-1 text-sm tabular-nums text-ink-600">{fmt(b.slot_start)}</p>
+                  <p className="mt-1 text-sm tabular-nums text-ink-600">{fmt(b.slot_start, tz)}</p>
                   {b.notes ? <p className="mt-1 text-sm text-ink-500">{b.notes}</p> : null}
                 </div>
                 {canManage && active ? (

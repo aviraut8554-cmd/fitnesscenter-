@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiClientError } from '@/lib/api';
-import type { BookingWithRelations, Coach, Slot } from '@/lib/admin-types';
+import type { BookingSettingsRow, BookingWithRelations, Coach, Slot } from '@/lib/admin-types';
 import { Alert, BookingStatusBadge, Button, Card, EmptyState } from '@/components/ui';
 
 const selectClass =
@@ -58,6 +58,10 @@ export function BookConsultation() {
       .get<{ bookings: BookingWithRelations[] }>('/api/bookings')
       .then((d) => !cancelled && setMine(d.bookings))
       .catch(() => !cancelled && setMine([]));
+    api
+      .get<{ settings: BookingSettingsRow }>('/api/booking-settings')
+      .then((d) => !cancelled && setTz(d.settings.timezone))
+      .catch(() => undefined);
     return () => {
       cancelled = true;
     };
@@ -204,7 +208,7 @@ export function BookConsultation() {
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="font-semibold tabular-nums text-ink-900">
-                      {fmt(b.slot_start)}
+                      {fmt(b.slot_start, tz)}
                     </span>
                     <BookingStatusBadge status={b.status} />
                   </div>
