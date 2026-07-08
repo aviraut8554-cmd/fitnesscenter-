@@ -76,6 +76,9 @@ create trigger enroll_on_paid_order
 -- Grants + RLS
 -- ---------------------------------------------------------------------------
 grant select, insert, update, delete on enrollments to authenticated;
+-- The blanket service_role grant in 0004 only covered tables existing then, so
+-- new tables must grant explicitly (the webhook/service path queries this table).
+grant all privileges on enrollments to service_role;
 
 alter table enrollments enable row level security;
 
