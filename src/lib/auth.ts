@@ -88,3 +88,58 @@ export async function requireTeamMember(
 
   return { supabase, user, tenantId: membership.tenant_id, role: membership.role };
 }
+
+/** A team member (with role) or a client, resolved for a single tenant. */
+export type TenantActor =
+  | ({ kind: 'team'; role: TeamRole } & AuthedRequest & { tenantId: string })
+  | ({ kind: 'client'; clientId: string } & AuthedRequest & { tenantId: string });
+
+/**
+ * Resolve the tenant context for either a team member or a client. Used by
+ * endpoints both roles can reach (e.g. checkout). A team member is resolved
+ * exactly as `requireTeamMember` (honouring `x-tenant-id`); otherwise the
+ * caller's single client row determines the tenant. Throws 403 if neither.
+ */
+export async function requireTenantActor(request: Request): Promise<TenantActor> {
+  const { supabase, user } = await requireUser(request);
+
+  const { data: memberships, error: mErr } = await supabase
+    .from('team_members')
+    .select('tenant_id, role')
+    .eq('user_id', user.id);
+  if (mErr) throw new ApiError(500, 'internal_error', 'Failed to resolve membership');
+
+  if (memberships && memberships.length > 0) {
+    const ctx = await requireTeamMember(request);
+    return { kind: 'team', ...ctx };
+  }
+
+  const { data: clientRows, error: cErr } = await supabase
+    .from('clients')
+    .select('id, tenant_id')
+    .eq('user_id', user.id);
+  if (cErr) throw new ApiError(500, 'internal_error', 'Failed to resolve client');
+
+  if (!clientRows || clientRows.length === 0) {
+    throw ApiError.forbidden('You are not a member or client of any tenant');
+  }
+  if (clientRows.length > 1) {
+    // A user could be a client under multiple tenants; require disambiguation.
+    const requested = request.headers.get('x-tenant-id');
+    const row = requested ? clientRows.find((c) => c.tenant_id === requested) : undefined;
+    if (!row) {
+      throw ApiError.badRequest(
+        'Ambiguous tenant: pass the x-tenant-id header (client of multiple tenants)',
+      );
+    }
+    return { kind: 'client', clientId: row.id, tenantId: row.tenant_id, supabase, user };
+  }
+
+  return {
+    kind: 'client',
+    clientId: clientRows[0].id,
+    tenantId: clientRows[0].tenant_id,
+    supabase,
+    user,
+  };
+}

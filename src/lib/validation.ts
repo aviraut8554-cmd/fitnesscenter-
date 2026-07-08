@@ -57,3 +57,40 @@ export const healthFormSchema = z.object({
   data: z.record(z.string(), z.unknown()),
 });
 export type HealthFormInput = z.infer<typeof healthFormSchema>;
+
+// --- Phase 2: commerce ---
+
+const amountMinorSchema = z.number().int().min(0);
+const currencySchema = z.string().length(3).toUpperCase().default('INR');
+
+export const productCreateSchema = z.object({
+  type: z.enum(['course', 'live_class', 'consultation', 'merch']),
+  name: z.string().min(1).max(160),
+  description: z.string().max(4000).optional(),
+  amountMinor: amountMinorSchema,
+  currency: currencySchema,
+  billingCycle: z
+    .enum(['one_time', 'weekly', 'monthly', 'quarterly', 'yearly'])
+    .default('one_time'),
+  capacity: z.number().int().positive().optional(),
+  isActive: z.boolean().default(true),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+});
+export type ProductCreateInput = z.infer<typeof productCreateSchema>;
+
+export const productUpdateSchema = productCreateSchema.partial();
+export type ProductUpdateInput = z.infer<typeof productUpdateSchema>;
+
+export const orderCreateSchema = z.object({
+  productId: z.string().uuid(),
+  // Optional: team members may create an order on behalf of a client. When a
+  // client checks out, this is ignored and their own client row is used.
+  clientId: z.string().uuid().optional(),
+});
+export type OrderCreateInput = z.infer<typeof orderCreateSchema>;
+
+export const refundSchema = z.object({
+  // Omit for a full refund; supply an amount (minor units) for a partial one.
+  amountMinor: amountMinorSchema.optional(),
+});
+export type RefundInput = z.infer<typeof refundSchema>;

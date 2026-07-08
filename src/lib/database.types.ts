@@ -474,6 +474,29 @@ export type Database = {
           },
         ]
       }
+      invoice_counters: {
+        Row: {
+          last_number: number
+          tenant_id: string
+        }
+        Insert: {
+          last_number?: number
+          tenant_id: string
+        }
+        Update: {
+          last_number?: number
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_counters_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           amount_minor: number
@@ -621,6 +644,7 @@ export type Database = {
       payments: {
         Row: {
           amount_minor: number
+          amount_refunded_minor: number
           created_at: string
           error_code: string | null
           error_description: string | null
@@ -637,6 +661,7 @@ export type Database = {
         }
         Insert: {
           amount_minor: number
+          amount_refunded_minor?: number
           created_at?: string
           error_code?: string | null
           error_description?: string | null
@@ -653,6 +678,7 @@ export type Database = {
         }
         Update: {
           amount_minor?: number
+          amount_refunded_minor?: number
           created_at?: string
           error_code?: string | null
           error_description?: string | null
@@ -778,6 +804,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      razorpay_webhook_events: {
+        Row: {
+          event_id: string
+          event_type: string
+          payload: Json
+          processed_at: string | null
+          received_at: string
+        }
+        Insert: {
+          event_id: string
+          event_type: string
+          payload?: Json
+          processed_at?: string | null
+          received_at?: string
+        }
+        Update: {
+          event_id?: string
+          event_type?: string
+          payload?: Json
+          processed_at?: string | null
+          received_at?: string
+        }
+        Relationships: []
       }
       subscriptions: {
         Row: {
@@ -924,6 +974,54 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_payment_captured: {
+        Args: {
+          p_amount_minor: number
+          p_event_id: string
+          p_event_type: string
+          p_method?: string
+          p_payload?: Json
+          p_razorpay_order_id: string
+          p_razorpay_payment_id: string
+          p_signature: string
+        }
+        Returns: boolean
+      }
+      apply_payment_failed: {
+        Args: {
+          p_amount_minor: number
+          p_error_code?: string
+          p_error_description?: string
+          p_event_id: string
+          p_event_type: string
+          p_payload?: Json
+          p_razorpay_order_id: string
+          p_razorpay_payment_id: string
+        }
+        Returns: boolean
+      }
+      apply_refund: {
+        Args: {
+          p_amount_minor: number
+          p_event_id: string
+          p_event_type: string
+          p_payload?: Json
+          p_razorpay_payment_id: string
+        }
+        Returns: boolean
+      }
+      apply_subscription_event: {
+        Args: {
+          p_current_period_end?: string
+          p_current_period_start?: string
+          p_event_id: string
+          p_event_type: string
+          p_payload?: Json
+          p_razorpay_subscription_id: string
+          p_status: Database["public"]["Enums"]["subscription_status"]
+        }
+        Returns: boolean
+      }
       citext: {
         Args: { "": boolean } | { "": string } | { "": unknown }
         Returns: string

@@ -23,11 +23,13 @@ backend or bypass RLS.
     (bearer token or cookie); all normal reads/writes go through it so RLS
     applies.
   - **Admin client** (`src/lib/supabase/admin.ts`) — service role, bypasses RLS.
-    Used only for trusted server-verified operations (signup provisioning, and
-    later: order creation and webhook processing).
+    Used only for trusted server-verified operations (signup provisioning, order
+    creation, and webhook processing).
 - Money is stored as integer minor units (paise) with an ISO currency code.
-- Monetary/state changes that must be trustworthy (payments) will be
-  webhook-driven only (Phase 2).
+- Payment/order/subscription state changes are **webhook-driven only** — never
+  client-side confirmation. Webhook handlers are signature-verified and
+  idempotent (keyed by the Razorpay event id), so a duplicate delivery never
+  double-unlocks or double-invoices.
 
 ## Local development
 
@@ -61,6 +63,9 @@ Migrations live in `supabase/migrations/` and are applied in order:
    helpers, `provision_tenant` RPC
 4. `0004_rls.sql` — RLS enablement and policies
 5. `0005_seed_plans.sql` — default pricing tiers
+6. `0006_payments.sql` — webhook idempotency ledger, per-tenant invoice
+   numbering, and the SECURITY DEFINER RPCs that apply payment/refund/
+   subscription state transitions atomically
 
 After changing a migration, run `npm run db:reset && npm run db:types`.
 
@@ -79,11 +84,29 @@ cookie). When a user belongs to multiple tenants, pass `x-tenant-id`.
 | GET/PATCH/DELETE | `/api/clients/{id}` | Read / update / delete a client |
 | GET/POST | `/api/clients/{id}/health-forms` | List / submit versioned health forms |
 
+## API (Phase 2 — commerce)
+
+| Method | Path | Description |
+| --- | --- | --- |
+| GET/POST | `/api/products` | List / create products & services (create: owner/manager) |
+| GET/PATCH/DELETE | `/api/products/{id}` | Read / update / delete a product (write: owner/manager) |
+| GET/POST | `/api/orders` | List orders / create an order + Razorpay order (checkout) |
+| GET | `/api/orders/{id}` | Read an order with its payments & invoices |
+| POST | `/api/orders/{id}/refund` | Initiate a refund (owner only) |
+| POST | `/api/payments/webhook` | Razorpay webhook receiver (signature-verified, idempotent) |
+| GET | `/api/revenue` | Revenue summary — gross/refunded/net (owner only) |
+
+Order amounts are always taken from the product server-side; clients can never
+set their own price, and no authenticated user can write orders/payments/
+invoices directly (only the service role does, via the checkout route and the
+verified webhook). Configure `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, and
+`RAZORPAY_WEBHOOK_SECRET` to enable the payment routes.
+
 ## Roadmap (per PRD)
 
-- **Phase 1 (this)** — schema, RLS, auth, client management, health forms ✅
-- **Phase 2** — products/services, Razorpay orders + webhooks + subscriptions,
-  invoices, refunds, seat/plan gating
+- **Phase 1** — schema, RLS, auth, client management, health forms ✅
+- **Phase 2 (this)** — products/services, Razorpay orders + webhooks +
+  subscriptions, invoices, refunds, revenue summary ✅
 - **Phase 3** — Google Calendar sync, booking conflict logic, classes,
   attendance
 - **Phase 4** — WhatsApp/email automation, chat
