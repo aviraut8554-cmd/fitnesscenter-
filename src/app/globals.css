@@ -1,49 +1,43 @@
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@import 'tailwindcss';
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/*
+ * Design tokens — bold / energetic direction. Adjust here once the Frontend
+ * Spec doc lands; every component reads these via Tailwind's theme() vars.
+ */
+@theme {
+  --color-brand-50: #fff3ed;
+  --color-brand-100: #ffe0cc;
+  --color-brand-200: #ffbf99;
+  --color-brand-300: #ff9a5c;
+  --color-brand-400: #ff7a29;
+  --color-brand-500: #f65a0b; /* primary — energetic orange */
+  --color-brand-600: #d64405;
+  --color-brand-700: #b03408;
+  --color-brand-800: #8c2b0e;
+  --color-brand-900: #72260f;
 
-html {
-  height: 100%;
+  --color-ink-50: #f6f7f9;
+  --color-ink-100: #eceef2;
+  --color-ink-200: #d5d9e2;
+  --color-ink-300: #b0b8c7;
+  --color-ink-400: #8590a5;
+  --color-ink-500: #667085;
+  --color-ink-600: #515b6e;
+  --color-ink-700: #414857;
+  --color-ink-800: #1f242e; /* dark surface */
+  --color-ink-900: #12151b; /* near-black background */
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
 html,
 body {
-  max-width: 100vw;
-  overflow-x: hidden;
+  height: 100%;
 }
 
 body {
-  min-height: 100%;
-  display: flex;
-  flex-direction: column;
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-ink-50);
+  color: var(--color-ink-900);
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-* {
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
-  }
 }
