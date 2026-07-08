@@ -32,18 +32,30 @@ export const clientSignupSchema = z.object({
 });
 export type ClientSignupInput = z.infer<typeof clientSignupSchema>;
 
+/** Invite a team member. No password: the member sets their own via an emailed
+ * invite link, so we only collect who they are and their role. */
 export const teamInviteSchema = z.object({
   email: emailSchema,
-  password: passwordSchema,
   role: z.enum(['manager', 'support']),
-  name: z.string().min(1).max(120).optional(),
+  name: z.string().min(1).max(120),
 });
 export type TeamInviteInput = z.infer<typeof teamInviteSchema>;
 
-export const teamRoleUpdateSchema = z.object({
-  role: z.enum(['manager', 'support']),
-});
-export type TeamRoleUpdateInput = z.infer<typeof teamRoleUpdateSchema>;
+/** Display-only profile fields + role/active flag an owner can edit. Every
+ * field is optional so the same endpoint serves role changes and profile edits;
+ * `role` is bounded to non-owner roles (ownership transfer is out of scope). */
+export const specialtyTagSchema = z.string().trim().min(1).max(40);
+
+export const teamMemberUpdateSchema = z
+  .object({
+    role: z.enum(['manager', 'support']).optional(),
+    isActive: z.boolean().optional(),
+    profilePhotoUrl: z.string().url().max(2048).nullish(),
+    specialtyTags: z.array(specialtyTagSchema).max(20).optional(),
+    bio: z.string().max(1000).nullish(),
+  })
+  .refine((v) => Object.keys(v).length > 0, { message: 'No fields to update' });
+export type TeamMemberUpdateInput = z.infer<typeof teamMemberUpdateSchema>;
 
 export const clientCreateSchema = z.object({
   fullName: z.string().min(1).max(120),

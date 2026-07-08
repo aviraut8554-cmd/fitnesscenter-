@@ -168,6 +168,72 @@ export function RoleBadge({ role }: { role: string }) {
   return <Badge tone={tone}>{role}</Badge>;
 }
 
+/** Team-member lifecycle pill: Active / Invited-pending / Inactive. */
+export function TeamStatusBadge({ status }: { status: string }) {
+  const map: Record<string, { tone: BadgeTone; label: string }> = {
+    active: { tone: 'success', label: 'Active' },
+    invited: { tone: 'warning', label: 'Invited · pending' },
+    inactive: { tone: 'neutral', label: 'Inactive' },
+  };
+  const { tone, label } = map[status] ?? { tone: 'neutral' as BadgeTone, label: status };
+  return <Badge tone={tone}>{label}</Badge>;
+}
+
+/** Round avatar showing a photo when available, else initials from a name. */
+export function Avatar({
+  name,
+  photoUrl,
+  size = 40,
+}: {
+  name: string | null;
+  photoUrl?: string | null;
+  size?: number;
+}) {
+  const initials = (name ?? '?')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase())
+    .join('') || '?';
+  const style = { width: size, height: size };
+  if (photoUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={photoUrl}
+        alt={name ?? 'Member'}
+        style={style}
+        className="rounded-full object-cover ring-1 ring-ink-200"
+      />
+    );
+  }
+  return (
+    <span
+      style={style}
+      className="inline-flex items-center justify-center rounded-full bg-brand-100 text-sm font-semibold text-brand-700"
+    >
+      {initials}
+    </span>
+  );
+}
+
+/** Small rounded chips for a list of tags (e.g. specialties). */
+export function TagChips({ tags }: { tags: string[] }) {
+  if (tags.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {tags.map((t) => (
+        <span
+          key={t}
+          className="inline-flex items-center rounded-full bg-ink-100 px-2 py-0.5 text-xs font-medium text-ink-700"
+        >
+          {t}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export function Table({ head, children }: { head: ReactNode; children: ReactNode }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-ink-100 bg-white shadow-sm">
