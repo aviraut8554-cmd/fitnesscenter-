@@ -86,6 +86,23 @@ export const settingsUpdateSchema = z
   });
 export type SettingsUpdateInput = z.infer<typeof settingsUpdateSchema>;
 
+/**
+ * Owner connecting their own Razorpay account. All three values are required so
+ * checkout, refunds and webhook verification all work from the same account.
+ * The key id is a Razorpay publishable id (rzp_test_… / rzp_live_…).
+ */
+export const razorpayConnectSchema = z.object({
+  keyId: z
+    .string()
+    .trim()
+    .regex(/^rzp_(test|live)_[A-Za-z0-9]+$/, {
+      message: 'Key ID must look like rzp_test_… or rzp_live_…',
+    }),
+  keySecret: z.string().trim().min(8, { message: 'Key secret looks too short' }).max(256),
+  webhookSecret: z.string().trim().min(6, { message: 'Webhook secret looks too short' }).max(256),
+});
+export type RazorpayConnectInput = z.infer<typeof razorpayConnectSchema>;
+
 /** A client editing their own account (PWA profile). */
 export const clientProfileUpdateSchema = z
   .object({

@@ -1,6 +1,8 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { env } from '@/lib/env';
 import { ApiError } from '@/lib/http';
+import { decryptSecret } from '@/lib/crypto';
+import type { AdminSupabase } from '@/lib/supabase/admin';
 
 /**
  * Thin Razorpay REST client + signature helpers. We use the REST API directly
@@ -30,6 +32,61 @@ export function requireRazorpayConfig(): RazorpayConfig {
     keyId: RAZORPAY_KEY_ID,
     keySecret: RAZORPAY_KEY_SECRET,
     webhookSecret: RAZORPAY_WEBHOOK_SECRET,
+  };
+}
+
+/** Where a resolved Razorpay config came from. */
+export type RazorpaySource = 'tenant' | 'env';
+
+/** Row shape read from `tenant_payment_credentials` (secrets encrypted). */
+interface StoredCredentials {
+  key_id: string;
+  key_secret_enc: string;
+  webhook_secret_enc: string;
+}
+
+/**
+ * Resolve the Razorpay config for a tenant. Prefers the tenant's own connected
+ * account (secrets decrypted from `tenant_payment_credentials`); falls back to
+ * the deployment-wide env keys when the tenant hasn't connected one. Throws a
+ * clear 500 when neither is available.
+ *
+ * Must be called with the service-role client — the credentials table is not
+ * readable by user-scoped (RLS) clients by design.
+ */
+export async function resolveRazorpayConfig(
+  admin: AdminSupabase,
+  tenantId: string,
+): Promise<RazorpayConfig & { source: RazorpaySource }> {
+  const { data, error } = await admin
+    .from('tenant_payment_credentials')
+    .select('key_id, key_secret_enc, webhook_secret_enc')
+    .eq('tenant_id', tenantId)
+    .maybeSingle<StoredCredentials>();
+  if (error) throw ApiError.unprocessable(error.message);
+
+  if (data) {
+    return {
+      keyId: data.key_id,
+      keySecret: decryptSecret(data.key_secret_enc),
+      webhookSecret: decryptSecret(data.webhook_secret_enc),
+      source: 'tenant',
+    };
+  }
+
+  const { RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET } = env;
+  if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET || !RAZORPAY_WEBHOOK_SECRET) {
+    throw new ApiError(
+      500,
+      'razorpay_not_configured',
+      'Razorpay is not connected for this tenant and no deployment keys are set. Connect Razorpay in Settings → Payments.',
+    );
+  }
+  return {
+    keyId: RAZORPAY_KEY_ID,
+    keySecret: RAZORPAY_KEY_SECRET,
+    webhookSecret: RAZORPAY_WEBHOOK_SECRET,
+    source: 'env',
   };
 }
 

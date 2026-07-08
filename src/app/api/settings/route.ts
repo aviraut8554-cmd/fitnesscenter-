@@ -1,9 +1,10 @@
 import type { Json } from '@/lib/database.types';
 import type { Branding, SettingsResponse } from '@/lib/admin-types';
 import { requireTeamMember } from '@/lib/auth';
-import { env } from '@/lib/env';
 import { ApiError, handleRoute, jsonOk, parseJson } from '@/lib/http';
 import { settingsUpdateSchema } from '@/lib/validation';
+import { createAdminSupabase } from '@/lib/supabase/admin';
+import { razorpayStatusForTenant } from '@/lib/razorpay-status';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,6 +46,8 @@ export const GET = handleRoute(async (request) => {
       .eq('tenant_id', tenantId),
   ]);
 
+  const razorpay = await razorpayStatusForTenant(createAdminSupabase(), tenantId);
+
   const response: SettingsResponse = {
     tenant: {
       id: tenant.id,
@@ -54,7 +57,7 @@ export const GET = handleRoute(async (request) => {
     },
     plan: plan ?? null,
     usage: { clientCount: clientCount ?? 0, teamCount: teamCount ?? 0 },
-    razorpay: { configured: Boolean(env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET) },
+    razorpay,
   };
   return jsonOk(response);
 });

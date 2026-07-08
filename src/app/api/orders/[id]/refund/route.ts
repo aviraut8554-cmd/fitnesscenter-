@@ -2,7 +2,7 @@ import { requireTeamMember } from '@/lib/auth';
 import { createAdminSupabase } from '@/lib/supabase/admin';
 import { ApiError, handleRoute, jsonOk, parseJson } from '@/lib/http';
 import { refundSchema } from '@/lib/validation';
-import { refundRazorpayPayment, requireRazorpayConfig } from '@/lib/razorpay';
+import { refundRazorpayPayment, resolveRazorpayConfig } from '@/lib/razorpay';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,8 +19,8 @@ export async function POST(request: Request, ctx: Ctx): Promise<Response> {
     const { id } = await ctx.params;
     const { tenantId, user } = await requireTeamMember(request, ['owner']);
     const input = await parseJson(request, refundSchema);
-    const cfg = requireRazorpayConfig();
     const admin = createAdminSupabase();
+    const cfg = await resolveRazorpayConfig(admin, tenantId);
 
     const { data: order, error: orderError } = await admin
       .from('orders')

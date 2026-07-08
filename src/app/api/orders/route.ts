@@ -2,7 +2,7 @@ import { requireTenantActor } from '@/lib/auth';
 import { createAdminSupabase } from '@/lib/supabase/admin';
 import { ApiError, handleRoute, jsonOk, parseJson } from '@/lib/http';
 import { orderCreateSchema } from '@/lib/validation';
-import { createRazorpayOrder, requireRazorpayConfig } from '@/lib/razorpay';
+import { createRazorpayOrder, resolveRazorpayConfig } from '@/lib/razorpay';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,8 +39,8 @@ export const GET = handleRoute(async (request) => {
 export const POST = handleRoute(async (request) => {
   const actor = await requireTenantActor(request);
   const input = await parseJson(request, orderCreateSchema);
-  const cfg = requireRazorpayConfig();
   const admin = createAdminSupabase();
+  const cfg = await resolveRazorpayConfig(admin, actor.tenantId);
 
   // Resolve the client this order is for.
   const clientId = actor.kind === 'client' ? actor.clientId : input.clientId;

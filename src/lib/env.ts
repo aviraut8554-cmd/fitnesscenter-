@@ -28,6 +28,10 @@ const serverSchema = z.object({
   // Shared secret guarding the reminders cron endpoint. When set, callers must
   // send `Authorization: Bearer <CRON_SECRET>`.
   CRON_SECRET: z.string().min(1).optional(),
+  // Symmetric key (32 bytes, hex or base64) used to encrypt per-tenant payment
+  // provider secrets at rest (AES-256-GCM). Optional at load so the app boots
+  // without it; saving/reading tenant Razorpay keys fails loudly when unset.
+  SETTINGS_ENCRYPTION_KEY: z.string().min(1).optional(),
 });
 
 const publicSchema = serverSchema.pick({
