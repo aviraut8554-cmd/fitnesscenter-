@@ -63,6 +63,40 @@ export const healthFormSchema = z.object({
 });
 export type HealthFormInput = z.infer<typeof healthFormSchema>;
 
+/** Tenant branding stored in `tenants.branding` (jsonb). All fields optional. */
+export const brandingSchema = z.object({
+  logoUrl: z.string().url().max(2000).or(z.literal('')).optional(),
+  primaryColor: z
+    .string()
+    .regex(/^#([0-9a-fA-F]{6})$/, { message: 'Use a 6-digit hex colour, e.g. #FF5A1F' })
+    .optional(),
+  tagline: z.string().max(160).optional(),
+});
+export type BrandingInput = z.infer<typeof brandingSchema>;
+
+/** Owner-editable business/branding settings (all fields optional). */
+export const settingsUpdateSchema = z
+  .object({
+    name: z.string().min(1).max(120).optional(),
+    subdomain: subdomainSchema.optional(),
+    branding: brandingSchema.optional(),
+  })
+  .refine((v) => v.name !== undefined || v.subdomain !== undefined || v.branding !== undefined, {
+    message: 'Provide at least one field to update',
+  });
+export type SettingsUpdateInput = z.infer<typeof settingsUpdateSchema>;
+
+/** A client editing their own account (PWA profile). */
+export const clientProfileUpdateSchema = z
+  .object({
+    fullName: z.string().min(1).max(120).optional(),
+    phone: z.string().max(32).optional(),
+  })
+  .refine((v) => v.fullName !== undefined || v.phone !== undefined, {
+    message: 'Provide at least one field to update',
+  });
+export type ClientProfileUpdateInput = z.infer<typeof clientProfileUpdateSchema>;
+
 // --- Phase 2: commerce ---
 
 const amountMinorSchema = z.number().int().min(0);

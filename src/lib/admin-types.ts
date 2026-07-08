@@ -14,6 +14,32 @@ export type TeamMember = Database['public']['Tables']['team_members']['Row'] & {
   isSelf: boolean;
 };
 
+// --- Settings (branding, plan, connections) ---
+
+export type Tenant = Database['public']['Tables']['tenants']['Row'];
+export type Plan = Database['public']['Tables']['plans']['Row'];
+
+/** Branding blob stored in `tenants.branding` (jsonb). */
+export type Branding = {
+  logoUrl?: string;
+  primaryColor?: string;
+  tagline?: string;
+};
+
+/** `GET /api/settings` → business profile, plan, usage and connection status. */
+export type SettingsResponse = {
+  tenant: Pick<Tenant, 'id' | 'name' | 'subdomain'> & { branding: Branding };
+  plan: Plan | null;
+  usage: { clientCount: number; teamCount: number };
+  razorpay: { configured: boolean };
+};
+
+/** `GET /api/me` → the signed-in client's own account. */
+export type MeResponse = {
+  client: { id: string; full_name: string; email: string | null; phone: string | null };
+  tenant: { name: string } | null;
+};
+
 export const CLIENT_STATUSES: ClientStatus[] = [
   'trial',
   'active',
