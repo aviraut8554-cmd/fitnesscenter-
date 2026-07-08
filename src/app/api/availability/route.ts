@@ -4,6 +4,12 @@ import { availabilityCreateSchema } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
 
+/** 'HH:MM' or 'HH:MM:SS' → seconds since midnight, for overlap comparison. */
+function toSeconds(t: string): number {
+  const [h, m, s] = t.split(':').map(Number);
+  return h * 3600 + m * 60 + (s || 0);
+}
+
 /**
  * List availability windows for the tenant (team members and clients).
  * Optional `?teamMemberId=` filters to a single coach.
@@ -40,6 +46,27 @@ export const POST = handleRoute(async (request) => {
     .maybeSingle();
   if (mErr) throw ApiError.unprocessable(mErr.message);
   if (!member) throw ApiError.badRequest('teamMemberId is not a member of this tenant');
+
+  // Reject a window that duplicates or overlaps an existing one for the same
+  // coach on the same weekday, so the availability list stays clean.
+  const { data: existing, error: exErr } = await supabase
+    .from('availability_rules')
+    .select('start_time, end_time')
+    .eq('tenant_id', tenantId)
+    .eq('team_member_id', input.teamMemberId)
+    .eq('weekday', input.weekday);
+  if (exErr) throw ApiError.unprocessable(exErr.message);
+
+  const newStart = toSeconds(input.startTime);
+  const newEnd = toSeconds(input.endTime);
+  const clash = (existing ?? []).some(
+    (r) => newStart < toSeconds(r.end_time) && toSeconds(r.start_time) < newEnd,
+  );
+  if (clash) {
+    throw ApiError.conflict(
+      'This overlaps an existing window for that coach on that day. Remove or adjust it first.',
+    );
+  }
 
   const { data, error } = await supabase
     .from('availability_rules')

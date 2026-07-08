@@ -16,6 +16,19 @@ function fmt(iso: string, tz?: string): string {
   }).format(new Date(iso));
 }
 
+/** "12 Jul 2026, 10:00 AM – 10:30 AM" (or full both ends if they span days). */
+function fmtRange(startIso: string, endIso: string, tz?: string): string {
+  const start = new Date(startIso);
+  const end = new Date(endIso);
+  const dayKey = (d: Date) =>
+    new Intl.DateTimeFormat('en-CA', { dateStyle: 'short', timeZone: tz }).format(d);
+  const time = (d: Date) =>
+    new Intl.DateTimeFormat(undefined, { timeStyle: 'short', timeZone: tz }).format(d);
+  if (dayKey(start) !== dayKey(end)) return `${fmt(startIso, tz)} – ${fmt(endIso, tz)}`;
+  const date = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeZone: tz }).format(start);
+  return `${date}, ${time(start)} – ${time(end)}`;
+}
+
 function todayISODate(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -208,7 +221,7 @@ export function BookConsultation() {
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="font-semibold tabular-nums text-ink-900">
-                      {fmt(b.slot_start, tz)}
+                      {fmtRange(b.slot_start, b.slot_end, tz)}
                     </span>
                     <BookingStatusBadge status={b.status} />
                   </div>

@@ -58,6 +58,13 @@ export type ClientCreateInput = z.infer<typeof clientCreateSchema>;
 export const clientUpdateSchema = clientCreateSchema.partial();
 export type ClientUpdateInput = z.infer<typeof clientUpdateSchema>;
 
+/** Bulk client import. Rows are validated individually server-side so one bad
+ * row doesn't reject the whole file; here we only bound the batch size. */
+export const clientImportSchema = z.object({
+  clients: z.array(z.unknown()).min(1).max(1000),
+});
+export type ClientImportInput = z.infer<typeof clientImportSchema>;
+
 export const healthFormSchema = z.object({
   data: z.record(z.string(), z.unknown()),
 });
