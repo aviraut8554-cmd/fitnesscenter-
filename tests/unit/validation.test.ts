@@ -17,6 +17,8 @@ import {
   brandingSchema,
   clientProfileUpdateSchema,
   razorpayConnectSchema,
+  teamInviteSchema,
+  teamMemberUpdateSchema,
 } from '@/lib/validation';
 
 describe('subdomainSchema', () => {
@@ -262,5 +264,36 @@ describe('enrollmentCreateSchema & attendanceMarkSchema', () => {
     expect(enrollmentCreateSchema.safeParse({ clientId: 'nope' }).success).toBe(false);
     expect(attendanceMarkSchema.safeParse({ clientId: UUID, status: 'present' }).success).toBe(true);
     expect(attendanceMarkSchema.safeParse({ clientId: UUID, status: 'here' }).success).toBe(false);
+  });
+});
+
+describe('teamInviteSchema', () => {
+  it('requires email, name and a non-owner role (no password)', () => {
+    expect(
+      teamInviteSchema.safeParse({ email: 'a@b.com', name: 'Aarav', role: 'manager' }).success,
+    ).toBe(true);
+    // name is required now
+    expect(teamInviteSchema.safeParse({ email: 'a@b.com', role: 'support' }).success).toBe(false);
+    // owner cannot be invited
+    expect(
+      teamInviteSchema.safeParse({ email: 'a@b.com', name: 'X', role: 'owner' }).success,
+    ).toBe(false);
+  });
+});
+
+describe('teamMemberUpdateSchema', () => {
+  it('accepts partial profile/role/active updates', () => {
+    expect(teamMemberUpdateSchema.safeParse({ role: 'manager' }).success).toBe(true);
+    expect(teamMemberUpdateSchema.safeParse({ isActive: false }).success).toBe(true);
+    expect(
+      teamMemberUpdateSchema.safeParse({ specialtyTags: ['Yoga', 'Rehab'], bio: 'Hi' }).success,
+    ).toBe(true);
+    expect(teamMemberUpdateSchema.safeParse({ profilePhotoUrl: null }).success).toBe(true);
+  });
+
+  it('rejects an empty patch and invalid fields', () => {
+    expect(teamMemberUpdateSchema.safeParse({}).success).toBe(false);
+    expect(teamMemberUpdateSchema.safeParse({ role: 'owner' }).success).toBe(false);
+    expect(teamMemberUpdateSchema.safeParse({ profilePhotoUrl: 'not-a-url' }).success).toBe(false);
   });
 });

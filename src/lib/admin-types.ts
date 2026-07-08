@@ -7,11 +7,28 @@ export type ClientStatus = Database['public']['Enums']['client_status'];
 export type HealthForm = Database['public']['Tables']['health_forms']['Row'];
 export type TeamRole = Database['public']['Enums']['team_role'];
 
-/** `GET /api/team` enriches each membership with the auth user's email/name. */
+export type TeamMemberStatus = 'active' | 'invited' | 'inactive';
+
+/** `GET /api/team` enriches each membership with the auth user's email/name,
+ * a derived status badge, and how many classes they instruct. */
 export type TeamMember = Database['public']['Tables']['team_members']['Row'] & {
   email: string | null;
   name: string | null;
   isSelf: boolean;
+  status: TeamMemberStatus;
+  classCount: number;
+};
+
+/** A class summary shown on a team member's detail page. */
+export type TeamMemberClass = Pick<
+  Database['public']['Tables']['classes']['Row'],
+  'id' | 'title' | 'is_recorded' | 'created_at'
+>;
+
+/** `GET /api/team/[id]` → the member (with email/name/status) + their classes. */
+export type TeamMemberDetail = {
+  teamMember: Omit<TeamMember, 'classCount'>;
+  classes: TeamMemberClass[];
 };
 
 // --- Settings (branding, plan, connections) ---

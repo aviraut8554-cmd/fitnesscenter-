@@ -1122,25 +1122,37 @@ export type Database = {
       }
       team_members: {
         Row: {
+          bio: string | null
           created_at: string
           id: string
+          is_active: boolean
+          profile_photo_url: string | null
           role: Database["public"]["Enums"]["team_role"]
+          specialty_tags: string[]
           tenant_id: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          bio?: string | null
           created_at?: string
           id?: string
+          is_active?: boolean
+          profile_photo_url?: string | null
           role: Database["public"]["Enums"]["team_role"]
+          specialty_tags?: string[]
           tenant_id: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          bio?: string | null
           created_at?: string
           id?: string
+          is_active?: boolean
+          profile_photo_url?: string | null
           role?: Database["public"]["Enums"]["team_role"]
+          specialty_tags?: string[]
           tenant_id?: string
           updated_at?: string
           user_id?: string

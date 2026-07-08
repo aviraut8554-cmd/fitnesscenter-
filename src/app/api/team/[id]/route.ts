@@ -1,21 +1,71 @@
 import { requireTeamMember } from '@/lib/auth';
 import { createAdminSupabase } from '@/lib/supabase/admin';
 import { ApiError, handleRoute, jsonOk, parseJson } from '@/lib/http';
-import { teamRoleUpdateSchema } from '@/lib/validation';
+import { teamMemberUpdateSchema } from '@/lib/validation';
+import type { Database, Json } from '@/lib/database.types';
 
 export const dynamic = 'force-dynamic';
 
 type Ctx = { params: Promise<{ id: string }> };
+type TeamMemberUpdate = Database['public']['Tables']['team_members']['Update'];
 
 /**
- * Change a team member's role (owner only). The owner's own membership and the
- * owner role itself are immutable here — ownership transfer is out of scope.
+ * Team member detail (any team member of the tenant can read), enriched with
+ * the member's email/name, a derived status, and the classes they instruct.
+ */
+export async function GET(request: Request, ctx: Ctx): Promise<Response> {
+  return handleRoute(async () => {
+    const { id } = await ctx.params;
+    const { tenantId, user } = await requireTeamMember(request);
+    const admin = createAdminSupabase();
+
+    const { data: member, error } = await admin
+      .from('team_members')
+      .select('*')
+      .eq('tenant_id', tenantId)
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw ApiError.unprocessable(error.message);
+    if (!member) throw ApiError.notFound('Team member not found');
+
+    const { data: authUser } = await admin.auth.admin.getUserById(member.user_id);
+    const hasSignedIn = Boolean(authUser.user?.last_sign_in_at);
+    const status: 'active' | 'invited' | 'inactive' = !member.is_active
+      ? 'inactive'
+      : hasSignedIn
+        ? 'active'
+        : 'invited';
+
+    const { data: classes } = await admin
+      .from('classes')
+      .select('id, title, is_recorded, created_at')
+      .eq('tenant_id', tenantId)
+      .eq('instructor_id', id)
+      .order('created_at', { ascending: false });
+
+    return jsonOk({
+      teamMember: {
+        ...member,
+        email: authUser.user?.email ?? null,
+        name: (authUser.user?.user_metadata?.name as string | undefined) ?? null,
+        isSelf: member.user_id === user.id,
+        status,
+      },
+      classes: classes ?? [],
+    });
+  })(request, {});
+}
+
+/**
+ * Update a team member (owner only): role, active flag, and display-only
+ * profile fields (photo, specialty tags, bio). The owner's own membership and
+ * the owner role itself are immutable here — ownership transfer is out of scope.
  */
 export async function PATCH(request: Request, ctx: Ctx): Promise<Response> {
   return handleRoute(async () => {
     const { id } = await ctx.params;
     const { tenantId, user } = await requireTeamMember(request, ['owner']);
-    const input = await parseJson(request, teamRoleUpdateSchema);
+    const input = await parseJson(request, teamMemberUpdateSchema);
     const admin = createAdminSupabase();
 
     const { data: target } = await admin
@@ -25,11 +75,20 @@ export async function PATCH(request: Request, ctx: Ctx): Promise<Response> {
       .eq('id', id)
       .maybeSingle();
     if (!target) throw ApiError.notFound('Team member not found');
-    if (target.role === 'owner') throw ApiError.badRequest('Cannot change the owner role');
+    if (target.role === 'owner' && (input.role !== undefined || input.isActive !== undefined)) {
+      throw ApiError.badRequest('Cannot change the owner role or status');
+    }
+
+    const patch: TeamMemberUpdate = {};
+    if (input.role !== undefined) patch.role = input.role;
+    if (input.isActive !== undefined) patch.is_active = input.isActive;
+    if (input.profilePhotoUrl !== undefined) patch.profile_photo_url = input.profilePhotoUrl;
+    if (input.specialtyTags !== undefined) patch.specialty_tags = input.specialtyTags;
+    if (input.bio !== undefined) patch.bio = input.bio;
 
     const { data, error } = await admin
       .from('team_members')
-      .update({ role: input.role })
+      .update(patch)
       .eq('tenant_id', tenantId)
       .eq('id', id)
       .select()
@@ -39,10 +98,10 @@ export async function PATCH(request: Request, ctx: Ctx): Promise<Response> {
     await admin.from('audit_log').insert({
       tenant_id: tenantId,
       actor_user_id: user.id,
-      action: 'team_member.role_changed',
+      action: 'team_member.updated',
       target_table: 'team_members',
       target_id: id,
-      changes: { from: target.role, to: input.role },
+      changes: input as unknown as Json,
     });
 
     return jsonOk({ teamMember: data });
