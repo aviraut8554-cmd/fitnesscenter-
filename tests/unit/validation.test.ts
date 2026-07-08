@@ -269,9 +269,11 @@ describe('enrollmentCreateSchema & attendanceMarkSchema', () => {
 
 describe('teamInviteSchema', () => {
   it('requires email, name and a non-owner role (no password)', () => {
-    expect(
-      teamInviteSchema.safeParse({ email: 'a@b.com', name: 'Aarav', role: 'manager' }).success,
-    ).toBe(true);
+    for (const role of ['manager', 'support', 'coach', 'dietician']) {
+      expect(
+        teamInviteSchema.safeParse({ email: 'a@b.com', name: 'Aarav', role }).success,
+      ).toBe(true);
+    }
     // name is required now
     expect(teamInviteSchema.safeParse({ email: 'a@b.com', role: 'support' }).success).toBe(false);
     // owner cannot be invited

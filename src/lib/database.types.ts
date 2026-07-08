@@ -1647,7 +1647,7 @@ export type Database = {
         | "cancelled"
         | "completed"
         | "expired"
-      team_role: "owner" | "manager" | "support"
+      team_role: "owner" | "manager" | "support" | "coach" | "dietician"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1831,7 +1831,7 @@ export const Constants = {
         "completed",
         "expired",
       ],
-      team_role: ["owner", "manager", "support"],
+      team_role: ["owner", "manager", "support", "coach", "dietician"],
     },
   },
 } as const

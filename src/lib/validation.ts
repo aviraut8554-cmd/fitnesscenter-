@@ -32,11 +32,16 @@ export const clientSignupSchema = z.object({
 });
 export type ClientSignupInput = z.infer<typeof clientSignupSchema>;
 
+/** Assignable team roles (everything except `owner` — ownership transfer is out
+ * of scope). Keep in sync with the `team_role` enum in the DB. */
+export const assignableRoleSchema = z.enum(['manager', 'support', 'coach', 'dietician']);
+export type AssignableRole = z.infer<typeof assignableRoleSchema>;
+
 /** Invite a team member. No password: the member sets their own via an emailed
  * invite link, so we only collect who they are and their role. */
 export const teamInviteSchema = z.object({
   email: emailSchema,
-  role: z.enum(['manager', 'support']),
+  role: assignableRoleSchema,
   name: z.string().min(1).max(120),
 });
 export type TeamInviteInput = z.infer<typeof teamInviteSchema>;
@@ -48,7 +53,7 @@ export const specialtyTagSchema = z.string().trim().min(1).max(40);
 
 export const teamMemberUpdateSchema = z
   .object({
-    role: z.enum(['manager', 'support']).optional(),
+    role: assignableRoleSchema.optional(),
     isActive: z.boolean().optional(),
     profilePhotoUrl: z.string().url().max(2048).nullish(),
     specialtyTags: z.array(specialtyTagSchema).max(20).optional(),
