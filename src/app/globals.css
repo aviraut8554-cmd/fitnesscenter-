@@ -27,6 +27,19 @@
   --color-ink-800: #1f242e; /* dark surface */
   --color-ink-900: #12151b; /* near-black background */
 
+  /* Semantic status colours — vibrant, not muted (per spec). */
+  --color-success-50: #e9fbf1;
+  --color-success-100: #c7f3da;
+  --color-success-500: #1fcb6b; /* payments captured, active status */
+  --color-success-700: #12864a;
+
+  --color-warning-50: #fff6e6;
+  --color-warning-100: #ffe7b8;
+  --color-warning-500: #ffb020; /* renewal-due, low capacity */
+  --color-warning-700: #a76a00;
+
+  --color-accent-500: #4b6bff; /* charts / data variety */
+
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
@@ -40,4 +53,21 @@ body {
   background-color: var(--color-ink-50);
   color: var(--color-ink-900);
   -webkit-font-smoothing: antialiased;
+}
+
+/* Substantial, tabular numbers for business data (revenue, counts). */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

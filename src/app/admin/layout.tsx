@@ -22,7 +22,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <Link href="/admin" className="mb-6 px-6 text-lg font-bold tracking-tight text-white">
           Fitness<span className="text-brand-500">OS</span>
         </Link>
-        <AdminSidebar />
+        <AdminSidebar role={membership.role} />
         <div className="mt-4 px-6 text-xs text-ink-500">Signed in as {membership.role}</div>
       </aside>
 

@@ -1,11 +1,25 @@
+import { redirect } from 'next/navigation';
 import { PageHeading } from '@/components/ui';
-import { SectionPlaceholder } from '@/components/section-placeholder';
+import { TeamManager } from '@/components/admin/team-manager';
+import { getTeamMembership } from '@/lib/session';
 
-export default function TeamPage() {
+export const dynamic = 'force-dynamic';
+
+export default async function TeamPage() {
+  const membership = await getTeamMembership();
+  if (!membership) redirect('/login');
+
   return (
     <div>
-      <PageHeading title="Team" subtitle="Invite and manage staff" />
-      <SectionPlaceholder note="Team roster and invites wire to /api/team in the next phase." />
+      <PageHeading
+        title="Team"
+        subtitle={
+          membership.role === 'owner'
+            ? 'Invite staff and manage their roles'
+            : 'Your team roster'
+        }
+      />
+      <TeamManager viewerRole={membership.role} />
     </div>
   );
 }

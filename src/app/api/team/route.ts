@@ -5,9 +5,12 @@ import { teamInviteSchema } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
 
-/** List team members of the caller's tenant. */
+/**
+ * List team members of the caller's tenant, enriched with each member's email
+ * (resolved via the service role — the `team_members` row only stores `user_id`).
+ */
 export const GET = handleRoute(async (request) => {
-  const { supabase, tenantId } = await requireTeamMember(request);
+  const { supabase, tenantId, user } = await requireTeamMember(request);
 
   const { data, error } = await supabase
     .from('team_members')
@@ -16,7 +19,21 @@ export const GET = handleRoute(async (request) => {
     .order('created_at', { ascending: true });
 
   if (error) throw ApiError.unprocessable(error.message);
-  return jsonOk({ teamMembers: data });
+
+  const admin = createAdminSupabase();
+  const enriched = await Promise.all(
+    (data ?? []).map(async (member) => {
+      const { data: authUser } = await admin.auth.admin.getUserById(member.user_id);
+      return {
+        ...member,
+        email: authUser.user?.email ?? null,
+        name: (authUser.user?.user_metadata?.name as string | undefined) ?? null,
+        isSelf: member.user_id === user.id,
+      };
+    }),
+  );
+
+  return jsonOk({ teamMembers: enriched });
 });
 
 /**
