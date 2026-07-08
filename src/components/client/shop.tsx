@@ -1,0 +1,167 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { api, ApiClientError } from '@/lib/api';
+import {
+  BILLING_CYCLE_LABELS,
+  PRODUCT_TYPE_LABELS,
+  type Order,
+  type OrderCheckout,
+  type Product,
+} from '@/lib/admin-types';
+import { formatMoney } from '@/lib/format';
+import { Alert, Badge, Button, Card, EmptyState } from '@/components/ui';
+
+const RAZORPAY_SCRIPT = 'https://checkout.razorpay.com/v1/checkout.js';
+
+type RazorpayHandlerResponse = {
+  razorpay_payment_id: string;
+  razorpay_order_id: string;
+  razorpay_signature: string;
+};
+
+type RazorpayOptions = {
+  key: string;
+  amount: number;
+  currency: string;
+  name: string;
+  description?: string;
+  order_id: string;
+  handler: (response: RazorpayHandlerResponse) => void;
+  modal?: { ondismiss?: () => void };
+  theme?: { color?: string };
+};
+
+type RazorpayInstance = { open: () => void };
+
+declare global {
+  interface Window {
+    Razorpay?: new (options: RazorpayOptions) => RazorpayInstance;
+  }
+}
+
+function loadRazorpay(): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined') return resolve(false);
+    if (window.Razorpay) return resolve(true);
+    const script = document.createElement('script');
+    script.src = RAZORPAY_SCRIPT;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+}
+
+export function ClientShop() {
+  const [products, setProducts] = useState<Product[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [buying, setBuying] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .get<{ products: Product[] }>('/api/products?active=true')
+      .then((data) => {
+        if (cancelled) return;
+        setProducts(data.products);
+        setError(null);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setProducts([]);
+        setError(err instanceof ApiClientError ? err.message : 'Could not load the store');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function buy(product: Product) {
+    setBuying(product.id);
+    setError(null);
+    setNotice(null);
+    try {
+      const { order, checkout } = await api.post<{ order: Order; checkout: OrderCheckout }>(
+        '/api/orders',
+        { productId: product.id },
+      );
+
+      const ready = await loadRazorpay();
+      if (!ready || !window.Razorpay) {
+        setError('Could not load the payment window. Check your connection and try again.');
+        return;
+      }
+
+      const rzp = new window.Razorpay({
+        key: checkout.keyId,
+        amount: checkout.amountMinor,
+        currency: checkout.currency,
+        name: product.name,
+        description: PRODUCT_TYPE_LABELS[product.type],
+        order_id: checkout.razorpayOrderId,
+        theme: { color: '#FF5A1F' },
+        handler: () => {
+          setNotice(
+            `Payment received for "${product.name}". Your access unlocks once the payment is confirmed.`,
+          );
+        },
+        modal: {
+          ondismiss: () => {
+            setNotice(`Checkout closed. Order ${order.receipt ?? ''} is awaiting payment.`);
+          },
+        },
+      });
+      rzp.open();
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : 'Could not start checkout');
+    } finally {
+      setBuying(null);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      {error ? <Alert>{error}</Alert> : null}
+      {notice ? <Alert tone="info">{notice}</Alert> : null}
+
+      {products === null ? (
+        <p className="text-sm text-ink-500">Loading store…</p>
+      ) : products.length === 0 ? (
+        <EmptyState
+          title="Nothing for sale yet"
+          hint="Your coach has not published any programs. Check back soon."
+        />
+      ) : (
+        <div className="space-y-3">
+          {products.map((p) => (
+            <Card key={p.id} className="flex flex-col gap-3">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <Badge tone="neutral">{PRODUCT_TYPE_LABELS[p.type]}</Badge>
+                  <h3 className="mt-2 text-base font-bold text-ink-900">{p.name}</h3>
+                  {p.description ? (
+                    <p className="mt-1 text-sm text-ink-500">{p.description}</p>
+                  ) : null}
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-lg font-bold tabular-nums text-ink-900">
+                    {formatMoney(p.amount_minor, p.currency)}
+                  </span>
+                  <span className="text-xs text-ink-400">
+                    {BILLING_CYCLE_LABELS[p.billing_cycle]}
+                  </span>
+                </div>
+                <Button loading={buying === p.id} onClick={() => buy(p)}>
+                  Buy now
+                </Button>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
