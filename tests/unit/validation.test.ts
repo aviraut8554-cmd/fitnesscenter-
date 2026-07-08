@@ -11,6 +11,7 @@ import {
   bookingUpdateSchema,
   classCreateSchema,
   classSessionCreateSchema,
+  offeringCreateSchema,
   enrollmentCreateSchema,
   attendanceMarkSchema,
   settingsUpdateSchema,
@@ -125,6 +126,54 @@ describe('productCreateSchema', () => {
         name: 'Plan',
         amountMinor: 1000,
         imageUrl: 'not-a-url',
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe('offeringCreateSchema', () => {
+  it('accepts a full live paid offering with schedule + merchandising', () => {
+    const res = offeringCreateSchema.safeParse({
+      name: 'Morning HIIT Batch',
+      classType: 'live',
+      pricingType: 'paid',
+      amountMinor: 149900,
+      billingCycle: 'monthly',
+      schedule: { days: ['mon', 'wed', 'fri'], startTime: '07:00', endTime: '08:00', accessLink: 'https://meet.example.com/x' },
+      testimonials: ['Loved it'],
+      isBestseller: true,
+    });
+    expect(res.success).toBe(true);
+  });
+
+  it('allows a free offering without a price', () => {
+    expect(
+      offeringCreateSchema.safeParse({ name: 'Free intro', pricingType: 'free' }).success,
+    ).toBe(true);
+  });
+
+  it('requires a price when paid', () => {
+    expect(
+      offeringCreateSchema.safeParse({ name: 'Paid', pricingType: 'paid' }).success,
+    ).toBe(false);
+  });
+
+  it('rejects an end time before the start time', () => {
+    expect(
+      offeringCreateSchema.safeParse({
+        name: 'Bad hours',
+        pricingType: 'free',
+        schedule: { startTime: '09:00', endTime: '08:00' },
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects an invalid weekday', () => {
+    expect(
+      offeringCreateSchema.safeParse({
+        name: 'Bad day',
+        pricingType: 'free',
+        schedule: { days: ['funday'] },
       }).success,
     ).toBe(false);
   });
