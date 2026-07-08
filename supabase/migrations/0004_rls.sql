@@ -20,6 +20,11 @@ grant select, insert, update, delete on
   attendance, chat_messages, automation_rules, audit_log
 to authenticated;
 
+-- The backend `service_role` bypasses RLS but still needs table/sequence
+-- privileges to run privileged server-verified operations (signup, webhooks).
+grant all privileges on all tables in schema public to service_role;
+grant all privileges on all sequences in schema public to service_role;
+
 -- ---------------------------------------------------------------------------
 -- Enable RLS
 -- ---------------------------------------------------------------------------
