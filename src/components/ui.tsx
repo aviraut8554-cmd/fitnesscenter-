@@ -78,11 +78,12 @@ export function PageHeading({ title, subtitle }: { title: string; subtitle?: str
   );
 }
 
-type BadgeTone = 'neutral' | 'brand' | 'success' | 'warning' | 'danger';
+type BadgeTone = 'neutral' | 'brand' | 'success' | 'warning' | 'danger' | 'info';
 
 const badgeTones: Record<BadgeTone, string> = {
   neutral: 'bg-ink-100 text-ink-600',
   brand: 'bg-brand-100 text-brand-700',
+  info: 'bg-blue-100 text-blue-700',
   success: 'bg-success-100 text-success-700',
   warning: 'bg-warning-100 text-warning-700',
   danger: 'bg-red-100 text-red-700',
@@ -164,8 +165,13 @@ export function ActiveBadge({ active }: { active: boolean }) {
 }
 
 export function RoleBadge({ role }: { role: string }) {
-  const tone: BadgeTone = role === 'owner' ? 'brand' : role === 'manager' ? 'success' : 'neutral';
-  return <Badge tone={tone}>{role}</Badge>;
+  const tones: Record<string, BadgeTone> = {
+    owner: 'brand',
+    manager: 'success',
+    coach: 'info',
+    dietician: 'info',
+  };
+  return <Badge tone={tones[role] ?? 'neutral'}>{role}</Badge>;
 }
 
 /** Team-member lifecycle pill: Active / Invited-pending / Inactive. */

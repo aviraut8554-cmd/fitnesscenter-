@@ -16,7 +16,12 @@ import {
   TeamStatusBadge,
 } from '@/components/ui';
 
-const INVITABLE_ROLES: Exclude<TeamRole, 'owner'>[] = ['manager', 'support'];
+const INVITABLE_ROLES: Exclude<TeamRole, 'owner'>[] = [
+  'manager',
+  'coach',
+  'dietician',
+  'support',
+];
 
 export function TeamManager({ viewerRole }: { viewerRole: TeamRole }) {
   const isOwner = viewerRole === 'owner';
