@@ -143,6 +143,21 @@ export function InvoiceStatusBadge({ status }: { status: string }) {
   return <Badge tone={tone}>{status}</Badge>;
 }
 
+/** Map a booking status enum to a coloured pill. */
+export function BookingStatusBadge({ status }: { status: string }) {
+  const tone: BadgeTone =
+    status === 'completed'
+      ? 'success'
+      : status === 'scheduled'
+        ? 'brand'
+        : status === 'rescheduled'
+          ? 'warning'
+          : status === 'cancelled' || status === 'no_show'
+            ? 'danger'
+            : 'neutral';
+  return <Badge tone={tone}>{status.replace(/_/g, ' ')}</Badge>;
+}
+
 /** Active/inactive pill for products/services. */
 export function ActiveBadge({ active }: { active: boolean }) {
   return <Badge tone={active ? 'success' : 'neutral'}>{active ? 'Active' : 'Inactive'}</Badge>;

@@ -99,3 +99,52 @@ export const refundSchema = z.object({
   amountMinor: amountMinorSchema.optional(),
 });
 export type RefundInput = z.infer<typeof refundSchema>;
+
+// --- Phase 3a: consultation booking ---
+
+const timeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/, {
+  message: 'Time must be HH:MM or HH:MM:SS (24h)',
+});
+
+export const bookingSettingsSchema = z.object({
+  timezone: z.string().min(1).max(64).optional(),
+  slotMinutes: z.number().int().min(5).max(480).optional(),
+  bufferMinutes: z.number().int().min(0).max(240).optional(),
+  minNoticeMinutes: z.number().int().min(0).optional(),
+  cancelCutoffMinutes: z.number().int().min(0).optional(),
+});
+export type BookingSettingsInput = z.infer<typeof bookingSettingsSchema>;
+
+export const availabilityCreateSchema = z
+  .object({
+    teamMemberId: z.string().uuid(),
+    weekday: z.number().int().min(0).max(6),
+    startTime: timeSchema,
+    endTime: timeSchema,
+  })
+  .refine((v) => v.endTime > v.startTime, {
+    message: 'endTime must be after startTime',
+    path: ['endTime'],
+  });
+export type AvailabilityCreateInput = z.infer<typeof availabilityCreateSchema>;
+
+export const bookingCreateSchema = z.object({
+  teamMemberId: z.string().uuid(),
+  slotStart: z.string().datetime({ offset: true }),
+  productId: z.string().uuid().optional(),
+  // Team members may book on behalf of a client; clients book for themselves.
+  clientId: z.string().uuid().optional(),
+  notes: z.string().max(2000).optional(),
+});
+export type BookingCreateInput = z.infer<typeof bookingCreateSchema>;
+
+export const bookingUpdateSchema = z
+  .object({
+    slotStart: z.string().datetime({ offset: true }).optional(),
+    status: z.enum(['cancelled', 'completed', 'no_show']).optional(),
+    notes: z.string().max(2000).optional(),
+  })
+  .refine((v) => v.slotStart !== undefined || v.status !== undefined || v.notes !== undefined, {
+    message: 'Provide slotStart, status or notes',
+  });
+export type BookingUpdateInput = z.infer<typeof bookingUpdateSchema>;

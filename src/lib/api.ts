@@ -51,6 +51,8 @@ export const api = {
   get: <T>(path: string, init?: ApiInit) => apiFetch<T>(path, { ...init, method: 'GET' }),
   post: <T>(path: string, body?: unknown, init?: ApiInit) =>
     apiFetch<T>(path, { ...init, method: 'POST', body }),
+  put: <T>(path: string, body?: unknown, init?: ApiInit) =>
+    apiFetch<T>(path, { ...init, method: 'PUT', body }),
   patch: <T>(path: string, body?: unknown, init?: ApiInit) =>
     apiFetch<T>(path, { ...init, method: 'PATCH', body }),
   del: <T>(path: string, init?: ApiInit) => apiFetch<T>(path, { ...init, method: 'DELETE' }),

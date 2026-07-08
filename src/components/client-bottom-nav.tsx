@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 const TABS: { label: string; href: string }[] = [
   { label: 'Home', href: '/app' },
   { label: 'Shop', href: '/app/shop' },
+  { label: 'Book', href: '/app/book' },
   { label: 'Orders', href: '/app/orders' },
   { label: 'Health', href: '/app/health' },
   { label: 'Profile', href: '/app/profile' },
@@ -14,7 +15,7 @@ const TABS: { label: string; href: string }[] = [
 export function ClientBottomNav() {
   const pathname = usePathname();
   return (
-    <nav className="sticky bottom-0 z-10 grid grid-cols-5 border-t border-ink-100 bg-white">
+    <nav className="sticky bottom-0 z-10 grid grid-cols-6 border-t border-ink-100 bg-white">
       {TABS.map((tab) => {
         const active = pathname === tab.href || (tab.href !== '/app' && pathname.startsWith(tab.href));
         return (
