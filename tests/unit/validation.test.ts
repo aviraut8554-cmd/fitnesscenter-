@@ -95,6 +95,39 @@ describe('productCreateSchema', () => {
       productCreateSchema.safeParse({ type: 'ebook', name: 'X', amountMinor: 100 }).success,
     ).toBe(false);
   });
+
+  it('accepts merchandising fields and enforces their bounds', () => {
+    const ok = productCreateSchema.safeParse({
+      type: 'course',
+      name: 'Plan',
+      amountMinor: 1000,
+      imageUrl: 'https://cdn.example.com/x.png',
+      testimonials: ['Great!', 'Loved it'],
+      isBestseller: true,
+      hasTrial: true,
+      trialPriceMinor: 100,
+      trialDurationDays: 7,
+    });
+    expect(ok.success).toBe(true);
+    // at most 2 testimonials
+    expect(
+      productCreateSchema.safeParse({
+        type: 'course',
+        name: 'Plan',
+        amountMinor: 1000,
+        testimonials: ['a', 'b', 'c'],
+      }).success,
+    ).toBe(false);
+    // imageUrl must be a URL
+    expect(
+      productCreateSchema.safeParse({
+        type: 'course',
+        name: 'Plan',
+        amountMinor: 1000,
+        imageUrl: 'not-a-url',
+      }).success,
+    ).toBe(false);
+  });
 });
 
 describe('orderCreateSchema', () => {

@@ -47,6 +47,12 @@ export async function PATCH(request: Request, ctx: Ctx): Promise<Response> {
     if (input.billingCycle !== undefined) patch.billing_cycle = input.billingCycle;
     if (input.capacity !== undefined) patch.capacity = input.capacity;
     if (input.isActive !== undefined) patch.is_active = input.isActive;
+    if (input.imageUrl !== undefined) patch.image_url = input.imageUrl;
+    if (input.testimonials !== undefined) patch.testimonials = input.testimonials;
+    if (input.isBestseller !== undefined) patch.is_bestseller = input.isBestseller;
+    if (input.hasTrial !== undefined) patch.has_trial = input.hasTrial;
+    if (input.trialPriceMinor !== undefined) patch.trial_price_minor = input.trialPriceMinor;
+    if (input.trialDurationDays !== undefined) patch.trial_duration_days = input.trialDurationDays;
     if (input.metadata !== undefined) patch.metadata = input.metadata as Json;
 
     if (Object.keys(patch).length === 0) {

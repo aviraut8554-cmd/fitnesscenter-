@@ -138,6 +138,9 @@ export type ClientProfileUpdateInput = z.infer<typeof clientProfileUpdateSchema>
 const amountMinorSchema = z.number().int().min(0);
 const currencySchema = z.string().length(3).toUpperCase().default('INR');
 
+/** Admin-authored social proof shown on the client-facing product card. */
+export const testimonialSchema = z.string().trim().min(1).max(280);
+
 export const productCreateSchema = z.object({
   type: z.enum(['course', 'live_class', 'consultation', 'merch']),
   name: z.string().min(1).max(160),
@@ -149,6 +152,13 @@ export const productCreateSchema = z.object({
     .default('one_time'),
   capacity: z.number().int().positive().optional(),
   isActive: z.boolean().default(true),
+  // Client-facing merchandising (display only).
+  imageUrl: z.string().url().max(2048).nullish(),
+  testimonials: z.array(testimonialSchema).max(2).optional(),
+  isBestseller: z.boolean().optional(),
+  hasTrial: z.boolean().optional(),
+  trialPriceMinor: amountMinorSchema.nullish(),
+  trialDurationDays: z.number().int().positive().max(3650).nullish(),
   metadata: z.record(z.string(), z.unknown()).optional(),
 });
 export type ProductCreateInput = z.infer<typeof productCreateSchema>;

@@ -135,16 +135,47 @@ export function ClientShop() {
       ) : (
         <div className="space-y-3">
           {products.map((p) => (
-            <Card key={p.id} className="flex flex-col gap-3">
+            <Card key={p.id} className="flex flex-col gap-3 overflow-hidden">
+              {p.image_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={p.image_url}
+                  alt={p.name}
+                  className="-mx-5 -mt-5 mb-1 h-40 w-[calc(100%+2.5rem)] object-cover"
+                />
+              ) : null}
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <Badge tone="neutral">{PRODUCT_TYPE_LABELS[p.type]}</Badge>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge tone="neutral">{PRODUCT_TYPE_LABELS[p.type]}</Badge>
+                    {p.is_bestseller ? <Badge tone="warning">Bestseller</Badge> : null}
+                  </div>
                   <h3 className="mt-2 text-base font-bold text-ink-900">{p.name}</h3>
                   {p.description ? (
                     <p className="mt-1 text-sm text-ink-500">{p.description}</p>
                   ) : null}
                 </div>
               </div>
+              {(p.testimonials ?? []).length > 0 ? (
+                <div className="space-y-1.5">
+                  {p.testimonials.map((t, i) => (
+                    <p
+                      key={i}
+                      className="border-l-2 border-brand-300 pl-2.5 text-xs italic text-ink-600"
+                    >
+                      {t}
+                    </p>
+                  ))}
+                </div>
+              ) : null}
+              {p.has_trial ? (
+                <p className="text-xs font-medium text-brand-600">
+                  {p.trial_price_minor != null
+                    ? `Intro offer: ${formatMoney(p.trial_price_minor, p.currency)}`
+                    : 'Intro / trial offer available'}
+                  {p.trial_duration_days != null ? ` · ${p.trial_duration_days}-day trial` : ''}
+                </p>
+              ) : null}
               <div className="flex items-center justify-between">
                 <div className="flex items-baseline gap-1">
                   <span className="text-lg font-bold tabular-nums text-ink-900">

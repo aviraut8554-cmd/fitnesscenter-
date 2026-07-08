@@ -51,6 +51,12 @@ export const POST = handleRoute(async (request) => {
       billing_cycle: input.billingCycle,
       capacity: input.capacity ?? null,
       is_active: input.isActive,
+      image_url: input.imageUrl ?? null,
+      testimonials: input.testimonials ?? [],
+      is_bestseller: input.isBestseller ?? false,
+      has_trial: input.hasTrial ?? false,
+      trial_price_minor: input.trialPriceMinor ?? null,
+      trial_duration_days: input.trialDurationDays ?? null,
       metadata: (input.metadata ?? {}) as Json,
     })
     .select()

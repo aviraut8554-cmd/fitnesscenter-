@@ -78,11 +78,12 @@ export function PageHeading({ title, subtitle }: { title: string; subtitle?: str
   );
 }
 
-type BadgeTone = 'neutral' | 'brand' | 'success' | 'warning' | 'danger';
+type BadgeTone = 'neutral' | 'brand' | 'success' | 'warning' | 'danger' | 'info';
 
 const badgeTones: Record<BadgeTone, string> = {
   neutral: 'bg-ink-100 text-ink-600',
   brand: 'bg-brand-100 text-brand-700',
+  info: 'bg-blue-100 text-blue-700',
   success: 'bg-success-100 text-success-700',
   warning: 'bg-warning-100 text-warning-700',
   danger: 'bg-red-100 text-red-700',
