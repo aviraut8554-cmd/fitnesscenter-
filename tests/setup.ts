@@ -7,3 +7,5 @@ process.env.SUPABASE_SERVICE_ROLE_KEY ||= 'test-service-role-key';
 process.env.RAZORPAY_KEY_ID ||= 'rzp_test_key';
 process.env.RAZORPAY_KEY_SECRET ||= 'rzp_test_secret';
 process.env.RAZORPAY_WEBHOOK_SECRET ||= 'whsec_test';
+process.env.SETTINGS_ENCRYPTION_KEY ||=
+  '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';

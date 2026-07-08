@@ -16,6 +16,7 @@ import {
   settingsUpdateSchema,
   brandingSchema,
   clientProfileUpdateSchema,
+  razorpayConnectSchema,
 } from '@/lib/validation';
 
 describe('subdomainSchema', () => {
@@ -223,6 +224,35 @@ describe('clientProfileUpdateSchema', () => {
     expect(clientProfileUpdateSchema.safeParse({ fullName: 'Aarav' }).success).toBe(true);
     expect(clientProfileUpdateSchema.safeParse({ phone: '+91 98765 43210' }).success).toBe(true);
     expect(clientProfileUpdateSchema.safeParse({ fullName: '' }).success).toBe(false);
+  });
+});
+
+describe('razorpayConnectSchema', () => {
+  const valid = {
+    keyId: 'rzp_test_ABC123xyz',
+    keySecret: 'supersecret_value',
+    webhookSecret: 'whsec_123456',
+  };
+
+  it('accepts test and live key ids with all three fields', () => {
+    expect(razorpayConnectSchema.safeParse(valid).success).toBe(true);
+    expect(
+      razorpayConnectSchema.safeParse({ ...valid, keyId: 'rzp_live_ABC123xyz' }).success,
+    ).toBe(true);
+  });
+
+  it('rejects a malformed key id', () => {
+    expect(razorpayConnectSchema.safeParse({ ...valid, keyId: 'pk_test_x' }).success).toBe(false);
+    expect(razorpayConnectSchema.safeParse({ ...valid, keyId: '' }).success).toBe(false);
+  });
+
+  it('requires a plausibly-long key and webhook secret', () => {
+    expect(razorpayConnectSchema.safeParse({ ...valid, keySecret: 'short' }).success).toBe(false);
+    expect(razorpayConnectSchema.safeParse({ ...valid, webhookSecret: 'x' }).success).toBe(false);
+  });
+
+  it('requires all three fields', () => {
+    expect(razorpayConnectSchema.safeParse({ keyId: valid.keyId }).success).toBe(false);
   });
 });
 

@@ -1155,6 +1155,44 @@ export type Database = {
           },
         ]
       }
+      tenant_payment_credentials: {
+        Row: {
+          connected_at: string
+          key_id: string
+          key_secret_enc: string
+          provider: string
+          tenant_id: string
+          updated_at: string
+          webhook_secret_enc: string
+        }
+        Insert: {
+          connected_at?: string
+          key_id: string
+          key_secret_enc: string
+          provider?: string
+          tenant_id: string
+          updated_at?: string
+          webhook_secret_enc: string
+        }
+        Update: {
+          connected_at?: string
+          key_id?: string
+          key_secret_enc?: string
+          provider?: string
+          tenant_id?: string
+          updated_at?: string
+          webhook_secret_enc?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_payment_credentials_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenants: {
         Row: {
           branding: Json

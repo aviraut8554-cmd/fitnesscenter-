@@ -26,12 +26,26 @@ export type Branding = {
   tagline?: string;
 };
 
+/** Razorpay connection status for Settings (never includes secrets). */
+export type RazorpayStatus = {
+  /** True when checkout can run: a tenant account or deployment env keys. */
+  configured: boolean;
+  /** Where the active config comes from, or null when unconfigured. */
+  source: 'tenant' | 'env' | null;
+  /** Masked publishable key id, e.g. "rzp_test_••••C0dE", or null. */
+  keyIdMasked: string | null;
+  /** 'test' | 'live' inferred from the key id prefix, or null. */
+  mode: 'test' | 'live' | null;
+  /** False when SETTINGS_ENCRYPTION_KEY is missing (can't store tenant keys). */
+  encryptionReady: boolean;
+};
+
 /** `GET /api/settings` → business profile, plan, usage and connection status. */
 export type SettingsResponse = {
   tenant: Pick<Tenant, 'id' | 'name' | 'subdomain'> & { branding: Branding };
   plan: Plan | null;
   usage: { clientCount: number; teamCount: number };
-  razorpay: { configured: boolean };
+  razorpay: RazorpayStatus;
 };
 
 /** `GET /api/me` → the signed-in client's own account. */
