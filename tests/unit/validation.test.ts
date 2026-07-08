@@ -13,6 +13,9 @@ import {
   classSessionCreateSchema,
   enrollmentCreateSchema,
   attendanceMarkSchema,
+  settingsUpdateSchema,
+  brandingSchema,
+  clientProfileUpdateSchema,
 } from '@/lib/validation';
 
 describe('subdomainSchema', () => {
@@ -189,6 +192,37 @@ describe('classSessionCreateSchema', () => {
         liveLink: 'not-a-url',
       }).success,
     ).toBe(false);
+  });
+});
+
+describe('brandingSchema', () => {
+  it('accepts hex colours and urls, rejects bad colours', () => {
+    expect(brandingSchema.safeParse({ primaryColor: '#FF5A1F' }).success).toBe(true);
+    expect(brandingSchema.safeParse({ logoUrl: 'https://x.test/l.png' }).success).toBe(true);
+    expect(brandingSchema.safeParse({ logoUrl: '' }).success).toBe(true);
+    expect(brandingSchema.safeParse({ primaryColor: 'red' }).success).toBe(false);
+    expect(brandingSchema.safeParse({ primaryColor: '#FFF' }).success).toBe(false);
+  });
+});
+
+describe('settingsUpdateSchema', () => {
+  it('requires at least one field and validates subdomain', () => {
+    expect(settingsUpdateSchema.safeParse({}).success).toBe(false);
+    expect(settingsUpdateSchema.safeParse({ name: 'Peak Gym' }).success).toBe(true);
+    expect(settingsUpdateSchema.safeParse({ subdomain: 'peak-gym' }).success).toBe(true);
+    expect(settingsUpdateSchema.safeParse({ subdomain: 'Bad_Sub' }).success).toBe(false);
+    expect(
+      settingsUpdateSchema.safeParse({ branding: { primaryColor: '#123ABC' } }).success,
+    ).toBe(true);
+  });
+});
+
+describe('clientProfileUpdateSchema', () => {
+  it('requires a field and bounds name length', () => {
+    expect(clientProfileUpdateSchema.safeParse({}).success).toBe(false);
+    expect(clientProfileUpdateSchema.safeParse({ fullName: 'Aarav' }).success).toBe(true);
+    expect(clientProfileUpdateSchema.safeParse({ phone: '+91 98765 43210' }).success).toBe(true);
+    expect(clientProfileUpdateSchema.safeParse({ fullName: '' }).success).toBe(false);
   });
 });
 
