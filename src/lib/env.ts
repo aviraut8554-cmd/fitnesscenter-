@@ -17,6 +17,17 @@ const serverSchema = z.object({
   RAZORPAY_KEY_ID: z.string().min(1).optional(),
   RAZORPAY_KEY_SECRET: z.string().min(1).optional(),
   RAZORPAY_WEBHOOK_SECRET: z.string().min(1).optional(),
+  // Phase 4 automation. All optional: when a channel's provider is not
+  // configured the dispatcher runs in dry-run/log mode instead of sending.
+  // Email (Resend-compatible HTTP API).
+  RESEND_API_KEY: z.string().min(1).optional(),
+  EMAIL_FROM: z.string().min(1).optional(),
+  // WhatsApp (Meta Cloud API).
+  WHATSAPP_TOKEN: z.string().min(1).optional(),
+  WHATSAPP_PHONE_ID: z.string().min(1).optional(),
+  // Shared secret guarding the reminders cron endpoint. When set, callers must
+  // send `Authorization: Bearer <CRON_SECRET>`.
+  CRON_SECRET: z.string().min(1).optional(),
 });
 
 const publicSchema = serverSchema.pick({

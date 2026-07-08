@@ -218,3 +218,32 @@ export const attendanceMarkSchema = z.object({
   status: z.enum(['registered', 'present', 'absent', 'late', 'excused']),
 });
 export type AttendanceMarkInput = z.infer<typeof attendanceMarkSchema>;
+
+// --- Phase 4: automation ---
+
+export const AUTOMATION_TRIGGER_VALUES = [
+  'client_signup',
+  'health_form_submitted',
+  'payment_success',
+  'payment_failed',
+  'subscription_renewal_due',
+  'subscription_expired',
+  'booking_created',
+  'booking_reminder',
+  'class_reminder',
+  'client_churned',
+] as const;
+
+const automationTemplateSchema = z.object({
+  subject: z.string().max(200).optional(),
+  body: z.string().min(1).max(4000),
+});
+
+/** Upsert one automation rule (unique per tenant/trigger/channel). */
+export const automationRuleUpsertSchema = z.object({
+  triggerType: z.enum(AUTOMATION_TRIGGER_VALUES),
+  channel: z.enum(['whatsapp', 'email']),
+  enabled: z.boolean().default(true),
+  template: automationTemplateSchema,
+});
+export type AutomationRuleUpsertInput = z.infer<typeof automationRuleUpsertSchema>;

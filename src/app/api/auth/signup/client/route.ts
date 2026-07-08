@@ -1,6 +1,7 @@
 import { createAdminSupabase } from '@/lib/supabase/admin';
 import { ApiError, handleRoute, jsonOk, parseJson } from '@/lib/http';
 import { clientSignupSchema } from '@/lib/validation';
+import { fireEvent } from '@/lib/automation';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +18,7 @@ export const POST = handleRoute(async (request) => {
 
   const tenant = await admin
     .from('tenants')
-    .select('id, is_active')
+    .select('id, name, is_active')
     .eq('subdomain', input.subdomain)
     .maybeSingle();
   if (tenant.error) {
@@ -80,6 +81,23 @@ export const POST = handleRoute(async (request) => {
     target_table: 'clients',
     target_id: client.data.id,
   });
+
+  // Best-effort welcome automation; never block signup on a notification error.
+  try {
+    await fireEvent({
+      admin,
+      tenantId,
+      trigger: 'client_signup',
+      recipient: {
+        clientId: client.data.id,
+        email: client.data.email,
+        phone: client.data.phone,
+      },
+      vars: { clientName: input.fullName, businessName: tenant.data.name },
+    });
+  } catch (err) {
+    console.error('client_signup automation failed:', err);
+  }
 
   return jsonOk({ userId, client: client.data }, 201);
 });

@@ -8,6 +8,9 @@ import {
   loadBookingSettings,
   loadBusyIntervals,
 } from '@/lib/booking-service';
+import { createAdminSupabase } from '@/lib/supabase/admin';
+import { resolveInstructorNames } from '@/lib/class-service';
+import { fireEvent } from '@/lib/automation';
 
 export const dynamic = 'force-dynamic';
 
@@ -96,6 +99,36 @@ export const POST = handleRoute(async (request) => {
     // exclusion_violation: the coach was double-booked in a race.
     if (error.code === '23P01') throw ApiError.conflict('That time was just booked');
     throw ApiError.unprocessable(error.message);
+  }
+
+  // Best-effort "booking confirmed" automation; never fail the booking on it.
+  try {
+    const admin = createAdminSupabase();
+    const [{ data: client }, { data: tenant }, coachNames] = await Promise.all([
+      admin.from('clients').select('email, phone, full_name').eq('id', clientId).maybeSingle(),
+      admin.from('tenants').select('name').eq('id', tenantId).maybeSingle(),
+      resolveInstructorNames(tenantId, [input.teamMemberId]),
+    ]);
+    if (client) {
+      await fireEvent({
+        admin,
+        tenantId,
+        trigger: 'booking_created',
+        recipient: { clientId, email: client.email, phone: client.phone },
+        vars: {
+          clientName: client.full_name,
+          businessName: tenant?.name ?? 'Your coach',
+          coachName: coachNames.get(input.teamMemberId) ?? 'your coach',
+          startTime: new Intl.DateTimeFormat('en-US', {
+            dateStyle: 'medium',
+            timeStyle: 'short',
+            timeZone: settings.timezone,
+          }).format(slotStart),
+        },
+      });
+    }
+  } catch (err) {
+    console.error('booking_created automation failed:', err);
   }
 
   return jsonOk({ booking: data }, 201);
