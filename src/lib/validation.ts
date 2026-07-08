@@ -282,6 +282,70 @@ export const classSessionUpdateSchema = z
   );
 export type ClassSessionUpdateInput = z.infer<typeof classSessionUpdateSchema>;
 
+// --- Unified offering (product + linked class/batch in one form) ---
+
+export const WEEKDAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
+export const weekdaySchema = z.enum(WEEKDAYS);
+export type Weekday = z.infer<typeof weekdaySchema>;
+
+/** "HH:MM" 24-hour local time (the recurring class time, not a dated session). */
+const timeOfDaySchema = z
+  .string()
+  .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Use HH:MM (24-hour)');
+
+/** Recurring weekly schedule stored on the class row's `schedule` jsonb. */
+export const classScheduleSchema = z.object({
+  days: z.array(weekdaySchema).max(7).optional(),
+  startTime: timeOfDaySchema.optional(),
+  endTime: timeOfDaySchema.optional(),
+  accessLink: z.string().url().max(2000).optional(),
+});
+export type ClassScheduleInput = z.infer<typeof classScheduleSchema>;
+
+/**
+ * One comprehensive form that provisions both the sellable product (shown in
+ * the store, with merchandising) and its linked class/batch (instructor,
+ * recurring schedule, live/recorded). Free offerings carry a zero price.
+ */
+export const offeringCreateSchema = z
+  .object({
+    name: z.string().min(1).max(160),
+    description: z.string().max(4000).optional(),
+    classType: z.enum(['live', 'recorded']).default('live'),
+    pricingType: z.enum(['paid', 'free']).default('paid'),
+    amountMinor: amountMinorSchema.optional(),
+    currency: currencySchema,
+    billingCycle: z
+      .enum(['one_time', 'weekly', 'monthly', 'quarterly', 'yearly'])
+      .default('one_time'),
+    instructorId: z.string().uuid().optional(),
+    capacity: z.number().int().positive().optional(),
+    isActive: z.boolean().default(true),
+    schedule: classScheduleSchema.optional(),
+    // Client-facing merchandising (mirrors productCreateSchema).
+    imageUrl: z.string().url().max(2048).nullish(),
+    testimonials: z.array(testimonialSchema).max(2).optional(),
+    isBestseller: z.boolean().optional(),
+    hasTrial: z.boolean().optional(),
+    trialPriceMinor: amountMinorSchema.nullish(),
+    trialDurationDays: z.number().int().positive().max(3650).nullish(),
+  })
+  .refine((v) => v.pricingType === 'free' || (v.amountMinor ?? 0) > 0, {
+    message: 'Enter a price, or mark the offering as free.',
+    path: ['amountMinor'],
+  })
+  .refine(
+    (v) =>
+      !v.schedule?.startTime ||
+      !v.schedule?.endTime ||
+      v.schedule.endTime > v.schedule.startTime,
+    { message: 'End time must be after start time.', path: ['schedule', 'endTime'] },
+  );
+export type OfferingCreateInput = z.infer<typeof offeringCreateSchema>;
+
+export const offeringUpdateSchema = offeringCreateSchema;
+export type OfferingUpdateInput = z.infer<typeof offeringUpdateSchema>;
+
 export const enrollmentCreateSchema = z.object({
   clientId: z.string().uuid(),
   status: z.enum(['active', 'cancelled', 'completed']).optional(),

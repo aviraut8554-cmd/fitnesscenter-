@@ -11,11 +11,34 @@ import {
   type ClassWithRelations,
   type Client,
   type EnrollmentWithClient,
-  type Product,
+  type Offering,
+  type OfferingSchedule,
   type TeamMember,
   type TeamRole,
 } from '@/lib/admin-types';
 import { Alert, Badge, Button, Card, EmptyState } from '@/components/ui';
+import { OfferingForm } from '@/components/admin/offering-form';
+import { formatMoney } from '@/lib/format';
+
+const WEEKDAY_LABELS: Record<string, string> = {
+  mon: 'Mon',
+  tue: 'Tue',
+  wed: 'Wed',
+  thu: 'Thu',
+  fri: 'Fri',
+  sat: 'Sat',
+  sun: 'Sun',
+};
+
+function scheduleSummary(schedule: OfferingSchedule): string | null {
+  const days = (schedule.days ?? []).map((d) => WEEKDAY_LABELS[d] ?? d);
+  const time =
+    schedule.startTime && schedule.endTime
+      ? `${schedule.startTime}–${schedule.endTime}`
+      : schedule.startTime ?? null;
+  const parts = [days.length ? days.join(', ') : null, time].filter(Boolean);
+  return parts.length ? parts.join(' · ') : null;
+}
 
 const selectClass =
   'w-full rounded-lg border border-ink-200 bg-white px-3.5 py-2.5 text-sm text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30';
@@ -41,10 +64,11 @@ export function ClassesManager({ viewerRole }: { viewerRole: TeamRole }) {
 
   const [classes, setClasses] = useState<ClassWithRelations[] | null>(null);
   const [instructors, setInstructors] = useState<TeamMember[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [tz, setTz] = useState<string | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<Offering | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -71,10 +95,6 @@ export function ClassesManager({ viewerRole }: { viewerRole: TeamRole }) {
         .then((d) => setInstructors(d.teamMembers))
         .catch(() => undefined);
       api
-        .get<{ products: Product[] }>('/api/products')
-        .then((d) => setProducts(d.products))
-        .catch(() => undefined);
-      api
         .get<{ clients: Client[] }>('/api/clients')
         .then((d) => setClients(d.clients))
         .catch(() => undefined);
@@ -85,10 +105,30 @@ export function ClassesManager({ viewerRole }: { viewerRole: TeamRole }) {
       .catch(() => undefined);
   }, [canManage, load]);
 
+  const formOpen = creating || editing !== null;
+
+  async function afterSave() {
+    setCreating(false);
+    setEditing(null);
+    await load();
+  }
+
   return (
     <div className="space-y-6">
       {canManage ? (
-        <NewClassForm instructors={instructors} products={products} onCreated={load} />
+        formOpen ? (
+          <OfferingForm
+            instructors={instructors}
+            editing={editing}
+            onDone={afterSave}
+            onCancel={() => {
+              setCreating(false);
+              setEditing(null);
+            }}
+          />
+        ) : (
+          <Button onClick={() => setCreating(true)}>New offering</Button>
+        )
       ) : null}
 
       {error ? <Alert>{error}</Alert> : null}
@@ -97,8 +137,8 @@ export function ClassesManager({ viewerRole }: { viewerRole: TeamRole }) {
         <p className="text-sm text-ink-500">Loading classes…</p>
       ) : classes.length === 0 ? (
         <EmptyState
-          title="No classes yet"
-          hint={canManage ? 'Create your first class to schedule sessions and take attendance.' : 'Your coaches haven’t scheduled any classes yet.'}
+          title="No offerings yet"
+          hint={canManage ? 'Create your first offering — sets up the store product and its class in one form.' : 'Your coaches haven’t scheduled any classes yet.'}
         />
       ) : (
         <div className="space-y-4">
@@ -110,133 +150,15 @@ export function ClassesManager({ viewerRole }: { viewerRole: TeamRole }) {
               canManage={canManage}
               clients={clients}
               onChanged={load}
+              onEdit={() => {
+                setCreating(false);
+                setEditing(c);
+              }}
             />
           ))}
         </div>
       )}
     </div>
-  );
-}
-
-function NewClassForm({
-  instructors,
-  products,
-  onCreated,
-}: {
-  instructors: TeamMember[];
-  products: Product[];
-  onCreated: () => Promise<void>;
-}) {
-  const [open, setOpen] = useState(false);
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [instructorId, setInstructorId] = useState('');
-  const [productId, setProductId] = useState('');
-  const [capacity, setCapacity] = useState('');
-  const [isRecorded, setIsRecorded] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-
-  async function save() {
-    if (!title.trim()) {
-      setError('Give the class a title.');
-      return;
-    }
-    setSaving(true);
-    setError(null);
-    try {
-      await api.post('/api/classes', {
-        title: title.trim(),
-        description: description.trim() || undefined,
-        instructorId: instructorId || undefined,
-        productId: productId || undefined,
-        capacity: capacity ? Number(capacity) : undefined,
-        isRecorded,
-      });
-      setOpen(false);
-      setTitle('');
-      setDescription('');
-      setInstructorId('');
-      setProductId('');
-      setCapacity('');
-      setIsRecorded(false);
-      await onCreated();
-    } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : 'Could not create class');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  if (!open) return <Button onClick={() => setOpen(true)}>New class</Button>;
-
-  return (
-    <Card>
-      <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-ink-500">New class</h2>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <label className="block sm:col-span-2">
-          <span className="mb-1.5 block text-sm font-medium text-ink-700">Title</span>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} className={selectClass} />
-        </label>
-        <label className="block sm:col-span-2">
-          <span className="mb-1.5 block text-sm font-medium text-ink-700">Description (optional)</span>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={2}
-            className={selectClass}
-          />
-        </label>
-        <label className="block">
-          <span className="mb-1.5 block text-sm font-medium text-ink-700">Instructor</span>
-          <select value={instructorId} onChange={(e) => setInstructorId(e.target.value)} className={selectClass}>
-            <option value="">Unassigned</option>
-            {instructors.map((m) => (
-              <option key={m.id} value={m.id}>
-                {(m.name || m.email || m.role) as string} ({m.role})
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block">
-          <span className="mb-1.5 block text-sm font-medium text-ink-700">Linked product (optional)</span>
-          <select value={productId} onChange={(e) => setProductId(e.target.value)} className={selectClass}>
-            <option value="">None — enrol manually</option>
-            {products.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block">
-          <span className="mb-1.5 block text-sm font-medium text-ink-700">Capacity (optional)</span>
-          <input
-            type="number"
-            min={1}
-            value={capacity}
-            onChange={(e) => setCapacity(e.target.value)}
-            className={selectClass}
-          />
-        </label>
-        <label className="flex items-center gap-2 pt-7 text-sm font-medium text-ink-700">
-          <input
-            type="checkbox"
-            checked={isRecorded}
-            onChange={(e) => setIsRecorded(e.target.checked)}
-            className="h-4 w-4"
-          />
-          Recorded course (external video)
-        </label>
-      </div>
-
-      {error ? <div className="mt-4"><Alert>{error}</Alert></div> : null}
-
-      <div className="mt-4 flex gap-3">
-        <Button onClick={save} loading={saving}>Create class</Button>
-        <Button variant="secondary" onClick={() => setOpen(false)}>Cancel</Button>
-      </div>
-    </Card>
   );
 }
 
@@ -246,17 +168,27 @@ function ClassCard({
   canManage,
   clients,
   onChanged,
+  onEdit,
 }: {
   cls: ClassWithRelations;
   tz?: string;
   canManage: boolean;
   clients: Client[];
   onChanged: () => Promise<void>;
+  onEdit: () => void;
 }) {
   const [tab, setTab] = useState<'sessions' | 'roster' | null>(null);
+  const schedule = scheduleSummary((cls.schedule ?? {}) as OfferingSchedule);
+  const accessLink = ((cls.schedule ?? {}) as OfferingSchedule).accessLink;
+  const price =
+    cls.product && cls.product.amount_minor > 0
+      ? formatMoney(cls.product.amount_minor, cls.product.currency)
+      : cls.product
+        ? 'Free'
+        : null;
 
   return (
-    <Card>
+    <Card className={cls.product && !cls.product.is_active ? 'border-dashed opacity-60' : ''}>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
@@ -264,15 +196,33 @@ function ClassCard({
             <Badge tone={cls.is_recorded ? 'neutral' : 'brand'}>
               {cls.is_recorded ? 'Recorded' : 'Live'}
             </Badge>
+            {cls.product?.is_bestseller ? <Badge tone="warning">Bestseller</Badge> : null}
+            {price ? <Badge tone="success">{price}</Badge> : null}
           </div>
           <p className="mt-1 text-sm text-ink-500">
             {cls.instructor ? `Coach: ${cls.instructor.name}` : 'No instructor assigned'} ·{' '}
             {cls.enrollmentCount} enrolled · {cls.sessions.length} session
             {cls.sessions.length === 1 ? '' : 's'}
           </p>
+          {schedule ? <p className="mt-1 text-sm text-ink-600">{schedule}</p> : null}
+          {accessLink ? (
+            <a
+              href={accessLink}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-1 inline-block text-xs font-medium text-brand-600 hover:underline"
+            >
+              Access link
+            </a>
+          ) : null}
           {cls.description ? <p className="mt-1 text-sm text-ink-600">{cls.description}</p> : null}
         </div>
         <div className="flex flex-wrap gap-2">
+          {canManage ? (
+            <Button variant="secondary" className="px-3 py-1.5 text-xs" onClick={onEdit}>
+              Edit
+            </Button>
+          ) : null}
           <Button
             variant="secondary"
             className="px-3 py-1.5 text-xs"
