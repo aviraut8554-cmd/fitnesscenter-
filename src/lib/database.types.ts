@@ -725,6 +725,85 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          automation_rule_id: string | null
+          body: string
+          channel: Database["public"]["Enums"]["automation_channel"]
+          client_id: string | null
+          created_at: string
+          dedup_key: string | null
+          error: string | null
+          id: string
+          recipient: string | null
+          scheduled_for: string | null
+          sent_at: string | null
+          status: Database["public"]["Enums"]["notification_status"]
+          subject: string | null
+          tenant_id: string
+          trigger_type: Database["public"]["Enums"]["automation_trigger"]
+          updated_at: string
+        }
+        Insert: {
+          automation_rule_id?: string | null
+          body: string
+          channel: Database["public"]["Enums"]["automation_channel"]
+          client_id?: string | null
+          created_at?: string
+          dedup_key?: string | null
+          error?: string | null
+          id?: string
+          recipient?: string | null
+          scheduled_for?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["notification_status"]
+          subject?: string | null
+          tenant_id: string
+          trigger_type: Database["public"]["Enums"]["automation_trigger"]
+          updated_at?: string
+        }
+        Update: {
+          automation_rule_id?: string | null
+          body?: string
+          channel?: Database["public"]["Enums"]["automation_channel"]
+          client_id?: string | null
+          created_at?: string
+          dedup_key?: string | null
+          error?: string | null
+          id?: string
+          recipient?: string | null
+          scheduled_for?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["notification_status"]
+          subject?: string | null
+          tenant_id?: string
+          trigger_type?: Database["public"]["Enums"]["automation_trigger"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_automation_rule_id_fkey"
+            columns: ["automation_rule_id"]
+            isOneToOne: false
+            referencedRelation: "automation_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           amount_minor: number
@@ -1490,6 +1569,7 @@ export type Database = {
       client_status: "trial" | "active" | "renewal_due" | "expired" | "churned"
       enrollment_status: "active" | "cancelled" | "completed"
       invoice_status: "draft" | "issued" | "paid" | "void" | "refunded"
+      notification_status: "pending" | "sent" | "failed" | "skipped"
       order_status:
         | "created"
         | "pending"
@@ -1670,6 +1750,7 @@ export const Constants = {
       client_status: ["trial", "active", "renewal_due", "expired", "churned"],
       enrollment_status: ["active", "cancelled", "completed"],
       invoice_status: ["draft", "issued", "paid", "void", "refunded"],
+      notification_status: ["pending", "sent", "failed", "skipped"],
       order_status: [
         "created",
         "pending",

@@ -129,6 +129,14 @@ export type ClientClass = {
   sessions: ClientSession[];
 };
 
+// --- Automation (Phase 4) ---
+
+export type AutomationRule = Database['public']['Tables']['automation_rules']['Row'];
+export type AutomationTrigger = Database['public']['Enums']['automation_trigger'];
+export type AutomationChannel = Database['public']['Enums']['automation_channel'];
+export type Notification = Database['public']['Tables']['notifications']['Row'];
+export type NotificationStatus = Database['public']['Enums']['notification_status'];
+
 export const ENROLLMENT_STATUSES: EnrollmentStatus[] = ['active', 'cancelled', 'completed'];
 
 export const ATTENDANCE_STATUSES: AttendanceStatus[] = [
