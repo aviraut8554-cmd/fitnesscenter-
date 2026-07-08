@@ -15,7 +15,9 @@ export const GET = handleRoute(async (request) => {
 
   let query = actor.supabase
     .from('orders')
-    .select('*')
+    .select(
+      '*, client:clients(full_name, email), product:products_services(name, type), invoices(number, status, issued_at)',
+    )
     .eq('tenant_id', actor.tenantId)
     .order('created_at', { ascending: false });
 

@@ -21,3 +21,63 @@ export const CLIENT_STATUSES: ClientStatus[] = [
   'expired',
   'churned',
 ];
+
+// --- Commerce (products, orders, payments, invoices) ---
+
+export type Product = Database['public']['Tables']['products_services']['Row'];
+export type ProductType = Database['public']['Enums']['product_type'];
+export type BillingCycle = Database['public']['Enums']['billing_cycle'];
+export type Order = Database['public']['Tables']['orders']['Row'];
+export type OrderStatus = Database['public']['Enums']['order_status'];
+export type Invoice = Database['public']['Tables']['invoices']['Row'];
+
+/** `GET /api/orders` enriches each order with its client, product and invoices. */
+export type OrderWithRelations = Order & {
+  client: { full_name: string; email: string | null } | null;
+  product: { name: string; type: ProductType } | null;
+  invoices: Pick<Invoice, 'number' | 'status' | 'issued_at'>[];
+};
+
+/** `GET /api/orders` returns the Razorpay checkout payload alongside the order. */
+export type OrderCheckout = {
+  razorpayOrderId: string;
+  keyId: string;
+  amountMinor: number;
+  currency: string;
+};
+
+/** Shape of `GET /api/revenue` → `{ revenue }`. */
+export type RevenueSummary = {
+  currency: string;
+  grossMinor: number;
+  refundedMinor: number;
+  netMinor: number;
+  capturedCount: number;
+  refundedCount: number;
+  failedCount: number;
+};
+
+export const PRODUCT_TYPES: ProductType[] = ['course', 'live_class', 'consultation', 'merch'];
+
+export const BILLING_CYCLES: BillingCycle[] = [
+  'one_time',
+  'weekly',
+  'monthly',
+  'quarterly',
+  'yearly',
+];
+
+export const PRODUCT_TYPE_LABELS: Record<ProductType, string> = {
+  course: 'Course',
+  live_class: 'Live class',
+  consultation: 'Consultation',
+  merch: 'Merch',
+};
+
+export const BILLING_CYCLE_LABELS: Record<BillingCycle, string> = {
+  one_time: 'One-time',
+  weekly: 'Weekly',
+  monthly: 'Monthly',
+  quarterly: 'Quarterly',
+  yearly: 'Yearly',
+};

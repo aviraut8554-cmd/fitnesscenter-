@@ -113,6 +113,41 @@ export function ClientStatusBadge({ status }: { status: string }) {
   return <Badge tone={tone}>{status.replace('_', ' ')}</Badge>;
 }
 
+/** Map an order status enum to a coloured pill. */
+export function OrderStatusBadge({ status }: { status: string }) {
+  const tone: BadgeTone =
+    status === 'paid'
+      ? 'success'
+      : status === 'created' || status === 'pending'
+        ? 'warning'
+        : status === 'refunded' || status === 'partially_refunded'
+          ? 'brand'
+          : status === 'failed' || status === 'cancelled'
+            ? 'danger'
+            : 'neutral';
+  return <Badge tone={tone}>{status.replace(/_/g, ' ')}</Badge>;
+}
+
+/** Map an invoice status enum to a coloured pill. */
+export function InvoiceStatusBadge({ status }: { status: string }) {
+  const tone: BadgeTone =
+    status === 'paid'
+      ? 'success'
+      : status === 'issued'
+        ? 'brand'
+        : status === 'refunded'
+          ? 'warning'
+          : status === 'void'
+            ? 'danger'
+            : 'neutral';
+  return <Badge tone={tone}>{status}</Badge>;
+}
+
+/** Active/inactive pill for products/services. */
+export function ActiveBadge({ active }: { active: boolean }) {
+  return <Badge tone={active ? 'success' : 'neutral'}>{active ? 'Active' : 'Inactive'}</Badge>;
+}
+
 export function RoleBadge({ role }: { role: string }) {
   const tone: BadgeTone = role === 'owner' ? 'brand' : role === 'manager' ? 'success' : 'neutral';
   return <Badge tone={tone}>{role}</Badge>;
