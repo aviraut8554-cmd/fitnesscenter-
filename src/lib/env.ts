@@ -11,6 +11,12 @@ const serverSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   SENTRY_DSN: z.string().url().optional(),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  // Razorpay (Phase 2). Optional at load so the app boots without payments
+  // configured; payment routes fail loudly via requireRazorpayConfig() when a
+  // value is missing.
+  RAZORPAY_KEY_ID: z.string().min(1).optional(),
+  RAZORPAY_KEY_SECRET: z.string().min(1).optional(),
+  RAZORPAY_WEBHOOK_SECRET: z.string().min(1).optional(),
 });
 
 const publicSchema = serverSchema.pick({
