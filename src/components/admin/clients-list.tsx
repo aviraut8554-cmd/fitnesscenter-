@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { api, ApiClientError } from '@/lib/api';
 import { CLIENT_STATUSES, type Client, type ClientStatus } from '@/lib/admin-types';
-import { Alert, Badge, ClientStatusBadge, EmptyState, Table } from '@/components/ui';
+import { Alert, ClientStatusBadge, EmptyState, Table } from '@/components/ui';
 
 function useDebounced<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = useState(value);
@@ -125,10 +125,6 @@ export function ClientsList() {
           ))}
         </Table>
       )}
-
-      <p className="text-xs text-ink-400">
-        <Badge tone="neutral">RLS</Badge> Visibility is scoped to your tenant server-side.
-      </p>
     </div>
   );
 }
