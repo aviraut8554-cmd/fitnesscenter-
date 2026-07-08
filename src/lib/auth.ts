@@ -51,9 +51,13 @@ export async function requireTeamMember(
 ): Promise<TeamContext> {
   const { supabase, user } = await requireUser(request);
 
+  // Only the caller's own memberships. RLS lets a team member read the whole
+  // tenant roster, so this must filter by user_id or a multi-member tenant is
+  // mistaken for the caller belonging to multiple tenants.
   const { data: memberships, error } = await supabase
     .from('team_members')
-    .select('tenant_id, role');
+    .select('tenant_id, role')
+    .eq('user_id', user.id);
   if (error) {
     throw new ApiError(500, 'internal_error', 'Failed to resolve membership');
   }
