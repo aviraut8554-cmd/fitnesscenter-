@@ -32,6 +32,13 @@ type FormState = {
   billingCycle: BillingCycle;
   capacity: string;
   isActive: boolean;
+  imageUrl: string;
+  testimonial1: string;
+  testimonial2: string;
+  isBestseller: boolean;
+  hasTrial: boolean;
+  trialPriceMajor: string;
+  trialDurationDays: string;
 };
 
 const EMPTY_FORM: FormState = {
@@ -43,12 +50,20 @@ const EMPTY_FORM: FormState = {
   billingCycle: 'one_time',
   capacity: '',
   isActive: true,
+  imageUrl: '',
+  testimonial1: '',
+  testimonial2: '',
+  isBestseller: false,
+  hasTrial: false,
+  trialPriceMajor: '',
+  trialDurationDays: '',
 };
 
 const selectClass =
   'w-full rounded-lg border border-ink-200 bg-white px-3.5 py-2.5 text-sm text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30';
 
 function toForm(p: Product): FormState {
+  const [t1 = '', t2 = ''] = p.testimonials ?? [];
   return {
     type: p.type,
     name: p.name,
@@ -58,6 +73,13 @@ function toForm(p: Product): FormState {
     billingCycle: p.billing_cycle,
     capacity: p.capacity != null ? String(p.capacity) : '',
     isActive: p.is_active,
+    imageUrl: p.image_url ?? '',
+    testimonial1: t1,
+    testimonial2: t2,
+    isBestseller: p.is_bestseller,
+    hasTrial: p.has_trial,
+    trialPriceMajor: p.trial_price_minor != null ? (p.trial_price_minor / 100).toString() : '',
+    trialDurationDays: p.trial_duration_days != null ? String(p.trial_duration_days) : '',
   };
 }
 
@@ -136,6 +158,18 @@ export function ProductsManager({ viewerRole }: { viewerRole: TeamRole }) {
       return;
     }
 
+    const testimonials = [form.testimonial1, form.testimonial2]
+      .map((t) => t.trim())
+      .filter(Boolean);
+    const trialPriceMinor = form.trialPriceMajor
+      ? Math.round(Number(form.trialPriceMajor) * 100)
+      : null;
+    if (trialPriceMinor != null && (!Number.isFinite(trialPriceMinor) || trialPriceMinor < 0)) {
+      setFormError('Enter a valid trial price.');
+      setSaving(false);
+      return;
+    }
+
     const payload = {
       type: form.type,
       name: form.name.trim(),
@@ -145,6 +179,12 @@ export function ProductsManager({ viewerRole }: { viewerRole: TeamRole }) {
       billingCycle: form.billingCycle,
       capacity: form.capacity ? Number(form.capacity) : undefined,
       isActive: form.isActive,
+      imageUrl: form.imageUrl.trim() || null,
+      testimonials,
+      isBestseller: form.isBestseller,
+      hasTrial: form.hasTrial,
+      trialPriceMinor: form.hasTrial ? trialPriceMinor : null,
+      trialDurationDays: form.hasTrial && form.trialDurationDays ? Number(form.trialDurationDays) : null,
     };
 
     try {
@@ -282,6 +322,78 @@ export function ProductsManager({ viewerRole }: { viewerRole: TeamRole }) {
                 className={selectClass}
               />
             </label>
+            <fieldset className="space-y-4 rounded-xl border border-ink-100 p-4">
+              <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-ink-500">
+                Client-facing merchandising
+              </legend>
+              <Field
+                label="Product image URL (shown in the store)"
+                name="imageUrl"
+                type="url"
+                placeholder="https://…"
+                value={form.imageUrl}
+                onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
+              />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field
+                  label="Testimonial 1 (optional)"
+                  name="testimonial1"
+                  maxLength={280}
+                  placeholder="“Changed my life!” — Aarav"
+                  value={form.testimonial1}
+                  onChange={(e) => setForm({ ...form, testimonial1: e.target.value })}
+                />
+                <Field
+                  label="Testimonial 2 (optional)"
+                  name="testimonial2"
+                  maxLength={280}
+                  placeholder="“Best coach ever.” — Diya"
+                  value={form.testimonial2}
+                  onChange={(e) => setForm({ ...form, testimonial2: e.target.value })}
+                />
+              </div>
+              <label className="inline-flex items-center gap-2 text-sm text-ink-700">
+                <input
+                  type="checkbox"
+                  checked={form.isBestseller}
+                  onChange={(e) => setForm({ ...form, isBestseller: e.target.checked })}
+                  className="h-4 w-4 rounded border-ink-300 text-brand-500 focus:ring-brand-500/30"
+                />
+                Mark as Bestseller / Most Popular
+              </label>
+              <div>
+                <label className="inline-flex items-center gap-2 text-sm text-ink-700">
+                  <input
+                    type="checkbox"
+                    checked={form.hasTrial}
+                    onChange={(e) => setForm({ ...form, hasTrial: e.target.checked })}
+                    className="h-4 w-4 rounded border-ink-300 text-brand-500 focus:ring-brand-500/30"
+                  />
+                  Offer an intro / trial
+                </label>
+                {form.hasTrial ? (
+                  <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                    <Field
+                      label="Trial price (optional)"
+                      name="trialPrice"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.trialPriceMajor}
+                      onChange={(e) => setForm({ ...form, trialPriceMajor: e.target.value })}
+                    />
+                    <Field
+                      label="Trial duration in days (optional)"
+                      name="trialDuration"
+                      type="number"
+                      min="1"
+                      value={form.trialDurationDays}
+                      onChange={(e) => setForm({ ...form, trialDurationDays: e.target.value })}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            </fieldset>
             <label className="inline-flex items-center gap-2 text-sm text-ink-700">
               <input
                 type="checkbox"
@@ -320,14 +432,36 @@ export function ProductsManager({ viewerRole }: { viewerRole: TeamRole }) {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {visible.map((p) => (
-            <Card key={p.id} className="flex h-full flex-col">
+            <Card
+              key={p.id}
+              className={`flex h-full flex-col ${
+                p.is_active ? '' : 'border-dashed opacity-60 grayscale'
+              }`}
+            >
+              {p.image_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={p.image_url}
+                  alt={p.name}
+                  className="mb-3 h-32 w-full rounded-lg object-cover ring-1 ring-ink-100"
+                />
+              ) : null}
               <div className="flex items-start justify-between gap-2">
-                <Badge tone="neutral">{PRODUCT_TYPE_LABELS[p.type]}</Badge>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone="neutral">{PRODUCT_TYPE_LABELS[p.type]}</Badge>
+                  {p.is_bestseller ? <Badge tone="warning">Bestseller</Badge> : null}
+                  {p.has_trial ? <Badge tone="info">Trial offer</Badge> : null}
+                </div>
                 <ActiveBadge active={p.is_active} />
               </div>
               <h3 className="mt-3 text-base font-bold text-ink-900">{p.name}</h3>
               {p.description ? (
                 <p className="mt-1 line-clamp-3 text-sm text-ink-500">{p.description}</p>
+              ) : null}
+              {(p.testimonials ?? []).length > 0 ? (
+                <p className="mt-2 line-clamp-2 border-l-2 border-brand-200 pl-2 text-xs italic text-ink-500">
+                  {p.testimonials[0]}
+                </p>
               ) : null}
               <div className="mt-4 flex items-baseline gap-1">
                 <span className="text-xl font-bold tabular-nums text-ink-900">

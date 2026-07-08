@@ -146,10 +146,21 @@ export type AttendanceStatus = Database['public']['Enums']['attendance_status'];
 /** `GET /api/classes` enriches each class for the admin view. */
 export type ClassWithRelations = ClassRow & {
   instructor: { id: string; name: string } | null;
-  product: { name: string; type: ProductType } | null;
+  product: Product | null;
   sessions: ClassSession[];
   enrollmentCount: number;
 };
+
+/** Recurring weekly schedule persisted in `classes.schedule` (jsonb). */
+export type OfferingSchedule = {
+  days?: string[];
+  startTime?: string | null;
+  endTime?: string | null;
+  accessLink?: string | null;
+};
+
+/** `GET /api/offerings` → a class joined with its linked store product. */
+export type Offering = ClassRow & { product: Product | null };
 
 /** `GET /api/classes/[id]/enrollments` → each enrollment with its client. */
 export type EnrollmentWithClient = Enrollment & {

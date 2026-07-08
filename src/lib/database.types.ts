@@ -987,11 +987,17 @@ export type Database = {
           created_at: string
           currency: string
           description: string | null
+          has_trial: boolean
           id: string
+          image_url: string | null
           is_active: boolean
+          is_bestseller: boolean
           metadata: Json
           name: string
           tenant_id: string
+          testimonials: string[]
+          trial_duration_days: number | null
+          trial_price_minor: number | null
           type: Database["public"]["Enums"]["product_type"]
           updated_at: string
         }
@@ -1002,11 +1008,17 @@ export type Database = {
           created_at?: string
           currency?: string
           description?: string | null
+          has_trial?: boolean
           id?: string
+          image_url?: string | null
           is_active?: boolean
+          is_bestseller?: boolean
           metadata?: Json
           name: string
           tenant_id: string
+          testimonials?: string[]
+          trial_duration_days?: number | null
+          trial_price_minor?: number | null
           type: Database["public"]["Enums"]["product_type"]
           updated_at?: string
         }
@@ -1017,11 +1029,17 @@ export type Database = {
           created_at?: string
           currency?: string
           description?: string | null
+          has_trial?: boolean
           id?: string
+          image_url?: string | null
           is_active?: boolean
+          is_bestseller?: boolean
           metadata?: Json
           name?: string
           tenant_id?: string
+          testimonials?: string[]
+          trial_duration_days?: number | null
+          trial_price_minor?: number | null
           type?: Database["public"]["Enums"]["product_type"]
           updated_at?: string
         }
