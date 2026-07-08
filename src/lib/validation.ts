@@ -148,3 +148,73 @@ export const bookingUpdateSchema = z
     message: 'Provide slotStart, status or notes',
   });
 export type BookingUpdateInput = z.infer<typeof bookingUpdateSchema>;
+
+// --- Phase 3b: class management ---
+
+export const classCreateSchema = z.object({
+  title: z.string().min(1).max(160),
+  description: z.string().max(4000).optional(),
+  instructorId: z.string().uuid().optional(),
+  productId: z.string().uuid().optional(),
+  capacity: z.number().int().positive().optional(),
+  isRecorded: z.boolean().default(false),
+});
+export type ClassCreateInput = z.infer<typeof classCreateSchema>;
+
+export const classUpdateSchema = z
+  .object({
+    title: z.string().min(1).max(160).optional(),
+    description: z.string().max(4000).nullable().optional(),
+    instructorId: z.string().uuid().nullable().optional(),
+    productId: z.string().uuid().nullable().optional(),
+    capacity: z.number().int().positive().nullable().optional(),
+    isRecorded: z.boolean().optional(),
+  })
+  .refine((v) => Object.keys(v).length > 0, { message: 'Provide at least one field' });
+export type ClassUpdateInput = z.infer<typeof classUpdateSchema>;
+
+export const classSessionCreateSchema = z
+  .object({
+    startsAt: z.string().datetime({ offset: true }),
+    endsAt: z.string().datetime({ offset: true }),
+    liveLink: z.string().url().max(2000).optional(),
+    recordingUrl: z.string().url().max(2000).optional(),
+    capacity: z.number().int().positive().optional(),
+  })
+  .refine((v) => new Date(v.endsAt) > new Date(v.startsAt), {
+    message: 'endsAt must be after startsAt',
+    path: ['endsAt'],
+  });
+export type ClassSessionCreateInput = z.infer<typeof classSessionCreateSchema>;
+
+export const classSessionUpdateSchema = z
+  .object({
+    startsAt: z.string().datetime({ offset: true }).optional(),
+    endsAt: z.string().datetime({ offset: true }).optional(),
+    liveLink: z.string().url().max(2000).nullable().optional(),
+    recordingUrl: z.string().url().max(2000).nullable().optional(),
+    capacity: z.number().int().positive().nullable().optional(),
+  })
+  .refine((v) => Object.keys(v).length > 0, { message: 'Provide at least one field' })
+  .refine(
+    (v) => v.startsAt === undefined || v.endsAt === undefined || new Date(v.endsAt) > new Date(v.startsAt),
+    { message: 'endsAt must be after startsAt', path: ['endsAt'] },
+  );
+export type ClassSessionUpdateInput = z.infer<typeof classSessionUpdateSchema>;
+
+export const enrollmentCreateSchema = z.object({
+  clientId: z.string().uuid(),
+  status: z.enum(['active', 'cancelled', 'completed']).optional(),
+});
+export type EnrollmentCreateInput = z.infer<typeof enrollmentCreateSchema>;
+
+export const enrollmentUpdateSchema = z.object({
+  status: z.enum(['active', 'cancelled', 'completed']),
+});
+export type EnrollmentUpdateInput = z.infer<typeof enrollmentUpdateSchema>;
+
+export const attendanceMarkSchema = z.object({
+  clientId: z.string().uuid(),
+  status: z.enum(['registered', 'present', 'absent', 'late', 'excused']),
+});
+export type AttendanceMarkInput = z.infer<typeof attendanceMarkSchema>;

@@ -16,7 +16,7 @@ const NAV: { label: string; href: string; soon?: boolean; roles?: TeamRole[] }[]
   { label: 'Products', href: '/admin/products', roles: ['owner', 'manager'] },
   { label: 'Payments', href: '/admin/payments', roles: ['owner'] },
   { label: 'Bookings', href: '/admin/bookings', roles: ['owner', 'manager', 'support'] },
-  { label: 'Classes', href: '/admin/classes', soon: true, roles: ['owner', 'manager'] },
+  { label: 'Classes', href: '/admin/classes', roles: ['owner', 'manager'] },
   { label: 'Chat', href: '/admin/chat', soon: true },
   { label: 'Team', href: '/admin/team', roles: ['owner'] },
   { label: 'Settings', href: '/admin/settings', roles: ['owner'] },

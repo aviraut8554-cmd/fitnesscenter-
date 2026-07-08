@@ -77,6 +77,68 @@ export type Slot = { start: string; end: string };
 /** `GET /api/coaches` → minimal bookable-coach subset (no PII). */
 export type Coach = { id: string; name: string; role: TeamRole };
 
+// --- Classes (Phase 3b) ---
+
+export type ClassRow = Database['public']['Tables']['classes']['Row'];
+export type ClassSession = Database['public']['Tables']['class_sessions']['Row'];
+export type Enrollment = Database['public']['Tables']['enrollments']['Row'];
+export type EnrollmentStatus = Database['public']['Enums']['enrollment_status'];
+export type AttendanceRow = Database['public']['Tables']['attendance']['Row'];
+export type AttendanceStatus = Database['public']['Enums']['attendance_status'];
+
+/** `GET /api/classes` enriches each class for the admin view. */
+export type ClassWithRelations = ClassRow & {
+  instructor: { id: string; name: string } | null;
+  product: { name: string; type: ProductType } | null;
+  sessions: ClassSession[];
+  enrollmentCount: number;
+};
+
+/** `GET /api/classes/[id]/enrollments` → each enrollment with its client. */
+export type EnrollmentWithClient = Enrollment & {
+  client: { full_name: string; email: string | null } | null;
+};
+
+/** `GET /api/class-sessions/[id]/attendance` → one row per enrolled client. */
+export type AttendanceEntry = {
+  clientId: string;
+  fullName: string;
+  status: AttendanceStatus;
+  attendanceId: string | null;
+  markedAt: string | null;
+};
+
+/** A time-gated session for the client PWA (live link hidden until live). */
+export type ClientSession = {
+  id: string;
+  startsAt: string;
+  endsAt: string;
+  isLive: boolean;
+  liveLink: string | null;
+  recordingUrl: string | null;
+};
+
+/** `GET /api/my-classes` → a client's enrolled classes with gated sessions. */
+export type ClientClass = {
+  id: string;
+  title: string;
+  description: string | null;
+  isRecorded: boolean;
+  instructorName: string | null;
+  enrollmentStatus: EnrollmentStatus;
+  sessions: ClientSession[];
+};
+
+export const ENROLLMENT_STATUSES: EnrollmentStatus[] = ['active', 'cancelled', 'completed'];
+
+export const ATTENDANCE_STATUSES: AttendanceStatus[] = [
+  'registered',
+  'present',
+  'absent',
+  'late',
+  'excused',
+];
+
 export const WEEKDAY_LABELS = [
   'Sunday',
   'Monday',
