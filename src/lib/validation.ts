@@ -40,6 +40,11 @@ export const teamInviteSchema = z.object({
 });
 export type TeamInviteInput = z.infer<typeof teamInviteSchema>;
 
+export const teamRoleUpdateSchema = z.object({
+  role: z.enum(['manager', 'support']),
+});
+export type TeamRoleUpdateInput = z.infer<typeof teamRoleUpdateSchema>;
+
 export const clientCreateSchema = z.object({
   fullName: z.string().min(1).max(120),
   email: emailSchema,

@@ -78,6 +78,68 @@ export function PageHeading({ title, subtitle }: { title: string; subtitle?: str
   );
 }
 
+type BadgeTone = 'neutral' | 'brand' | 'success' | 'warning' | 'danger';
+
+const badgeTones: Record<BadgeTone, string> = {
+  neutral: 'bg-ink-100 text-ink-600',
+  brand: 'bg-brand-100 text-brand-700',
+  success: 'bg-success-100 text-success-700',
+  warning: 'bg-warning-100 text-warning-700',
+  danger: 'bg-red-100 text-red-700',
+};
+
+export function Badge({ children, tone = 'neutral' }: { children: ReactNode; tone?: BadgeTone }) {
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${badgeTones[tone]}`}
+    >
+      {children}
+    </span>
+  );
+}
+
+/** Map a client status enum to a coloured pill (spec: status is never plain text). */
+export function ClientStatusBadge({ status }: { status: string }) {
+  const tone: BadgeTone =
+    status === 'active'
+      ? 'success'
+      : status === 'renewal_due'
+        ? 'warning'
+        : status === 'trial'
+          ? 'brand'
+          : status === 'expired' || status === 'churned'
+            ? 'danger'
+            : 'neutral';
+  return <Badge tone={tone}>{status.replace('_', ' ')}</Badge>;
+}
+
+export function RoleBadge({ role }: { role: string }) {
+  const tone: BadgeTone = role === 'owner' ? 'brand' : role === 'manager' ? 'success' : 'neutral';
+  return <Badge tone={tone}>{role}</Badge>;
+}
+
+export function Table({ head, children }: { head: ReactNode; children: ReactNode }) {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-ink-100 bg-white shadow-sm">
+      <table className="w-full text-left text-sm">
+        <thead className="border-b border-ink-100 bg-ink-50 text-xs font-semibold uppercase tracking-wide text-ink-500">
+          {head}
+        </thead>
+        <tbody className="divide-y divide-ink-100">{children}</tbody>
+      </table>
+    </div>
+  );
+}
+
+export function EmptyState({ title, hint }: { title: string; hint?: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-ink-200 bg-white/60 p-10 text-center">
+      <h2 className="text-lg font-bold text-ink-900">{title}</h2>
+      {hint ? <p className="mt-1 max-w-sm text-sm text-ink-500">{hint}</p> : null}
+    </div>
+  );
+}
+
 export function ComingSoon({ feature }: { feature: string }) {
   return (
     <div className="flex min-h-[50vh] flex-col items-center justify-center rounded-2xl border border-dashed border-ink-200 bg-white/60 p-10 text-center">
