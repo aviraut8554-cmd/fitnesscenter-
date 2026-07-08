@@ -1,0 +1,34 @@
+import { z } from 'zod';
+
+/**
+ * Environment configuration, validated once at module load. Import `env` for
+ * server-side secrets and `publicEnv` for values safe to expose to the client.
+ * No secret is ever hard-coded; everything comes from the environment.
+ */
+const serverSchema = z.object({
+  NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  SENTRY_DSN: z.string().url().optional(),
+  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+});
+
+const publicSchema = serverSchema.pick({
+  NEXT_PUBLIC_SUPABASE_URL: true,
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: true,
+});
+
+function parse<T extends z.ZodTypeAny>(schema: T, source: NodeJS.ProcessEnv): z.infer<T> {
+  const result = schema.safeParse(source);
+  if (!result.success) {
+    const issues = result.error.issues
+      .map((i) => `${i.path.join('.')}: ${i.message}`)
+      .join('; ');
+    throw new Error(`Invalid environment configuration: ${issues}`);
+  }
+  return result.data;
+}
+
+export const env = parse(serverSchema, process.env);
+
+export const publicEnv = parse(publicSchema, process.env);
