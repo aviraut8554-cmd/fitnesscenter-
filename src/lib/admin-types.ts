@@ -159,8 +159,15 @@ export type OfferingSchedule = {
   accessLink?: string | null;
 };
 
-/** `GET /api/offerings` → a class joined with its linked store product. */
-export type Offering = ClassRow & { product: Product | null };
+/** A batch (class) within an offering, enriched for the admin view. */
+export type OfferingBatch = ClassRow & {
+  instructor: { id: string; name: string } | null;
+  sessions?: ClassSession[];
+  enrollments?: { count: number }[];
+};
+
+/** `GET /api/offerings` → a store product with its batches (classes). */
+export type Offering = Product & { batches: OfferingBatch[] };
 
 /** `GET /api/classes/[id]/enrollments` → each enrollment with its client. */
 export type EnrollmentWithClient = Enrollment & {

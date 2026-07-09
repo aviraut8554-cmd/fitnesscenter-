@@ -812,6 +812,7 @@ export type Database = {
           currency: string
           id: string
           notes: Json
+          paid_at: string | null
           product_id: string
           razorpay_order_id: string | null
           receipt: string | null
@@ -826,6 +827,7 @@ export type Database = {
           currency?: string
           id?: string
           notes?: Json
+          paid_at?: string | null
           product_id: string
           razorpay_order_id?: string | null
           receipt?: string | null
@@ -840,6 +842,7 @@ export type Database = {
           currency?: string
           id?: string
           notes?: Json
+          paid_at?: string | null
           product_id?: string
           razorpay_order_id?: string | null
           receipt?: string | null
@@ -986,6 +989,7 @@ export type Database = {
           capacity: number | null
           created_at: string
           currency: string
+          default_class_id: string | null
           description: string | null
           has_trial: boolean
           id: string
@@ -1007,6 +1011,7 @@ export type Database = {
           capacity?: number | null
           created_at?: string
           currency?: string
+          default_class_id?: string | null
           description?: string | null
           has_trial?: boolean
           id?: string
@@ -1028,6 +1033,7 @@ export type Database = {
           capacity?: number | null
           created_at?: string
           currency?: string
+          default_class_id?: string | null
           description?: string | null
           has_trial?: boolean
           id?: string
@@ -1044,6 +1050,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "products_services_default_class_id_fkey"
+            columns: ["default_class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "products_services_tenant_id_fkey"
             columns: ["tenant_id"]

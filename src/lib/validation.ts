@@ -308,25 +308,46 @@ export const classScheduleSchema = z.object({
 export type ClassScheduleInput = z.infer<typeof classScheduleSchema>;
 
 /**
- * One comprehensive form that provisions both the sellable product (shown in
- * the store, with merchandising) and its linked class/batch (instructor,
- * recurring schedule, live/recorded). Free offerings carry a zero price.
+ * One batch (class) under an offering: its own instructor, live/recorded flag,
+ * recurring schedule and capacity. `id` is present when editing an existing
+ * batch; `isDefault` marks the batch clients are auto-assigned to after 24h.
+ */
+export const offeringBatchSchema = z
+  .object({
+    id: z.string().uuid().optional(),
+    classType: z.enum(['live', 'recorded']).default('live'),
+    instructorId: z.string().uuid().optional(),
+    capacity: z.number().int().positive().optional(),
+    schedule: classScheduleSchema.optional(),
+    isDefault: z.boolean().optional(),
+  })
+  .refine(
+    (v) =>
+      !v.schedule?.startTime ||
+      !v.schedule?.endTime ||
+      v.schedule.endTime > v.schedule.startTime,
+    { message: 'End time must be after start time.', path: ['schedule', 'endTime'] },
+  );
+export type OfferingBatchInput = z.infer<typeof offeringBatchSchema>;
+
+/**
+ * One comprehensive form that provisions the sellable product (shown in the
+ * store, with merchandising) and one or more linked batches (classes). When a
+ * product has multiple batches, the buyer picks one after payment. Free
+ * offerings carry a zero price.
  */
 export const offeringCreateSchema = z
   .object({
     name: z.string().min(1).max(160),
     description: z.string().max(4000).optional(),
-    classType: z.enum(['live', 'recorded']).default('live'),
     pricingType: z.enum(['paid', 'free']).default('paid'),
     amountMinor: amountMinorSchema.optional(),
     currency: currencySchema,
     billingCycle: z
       .enum(['one_time', 'weekly', 'monthly', 'quarterly', 'yearly'])
       .default('one_time'),
-    instructorId: z.string().uuid().optional(),
-    capacity: z.number().int().positive().optional(),
     isActive: z.boolean().default(true),
-    schedule: classScheduleSchema.optional(),
+    batches: z.array(offeringBatchSchema).min(1).max(20),
     // Client-facing merchandising (mirrors productCreateSchema).
     imageUrl: z.string().url().max(2048).nullish(),
     testimonials: z.array(testimonialSchema).max(2).optional(),
@@ -339,17 +360,21 @@ export const offeringCreateSchema = z
     message: 'Enter a price, or mark the offering as free.',
     path: ['amountMinor'],
   })
-  .refine(
-    (v) =>
-      !v.schedule?.startTime ||
-      !v.schedule?.endTime ||
-      v.schedule.endTime > v.schedule.startTime,
-    { message: 'End time must be after start time.', path: ['schedule', 'endTime'] },
-  );
+  .refine((v) => v.batches.filter((b) => b.isDefault).length <= 1, {
+    message: 'Only one batch can be the default.',
+    path: ['batches'],
+  });
 export type OfferingCreateInput = z.infer<typeof offeringCreateSchema>;
 
 export const offeringUpdateSchema = offeringCreateSchema;
 export type OfferingUpdateInput = z.infer<typeof offeringUpdateSchema>;
+
+/** Client picks a batch for a product they've paid for. */
+export const batchSelectionSchema = z.object({
+  productId: z.string().uuid(),
+  classId: z.string().uuid(),
+});
+export type BatchSelectionInput = z.infer<typeof batchSelectionSchema>;
 
 export const enrollmentCreateSchema = z.object({
   clientId: z.string().uuid(),

@@ -138,6 +138,50 @@ describe.skipIf(!reachable)('classes: enrollment/attendance RLS & auto-enroll', 
     expect(after.data![0].status).toBe('active');
   });
 
+  it('does NOT auto-enroll when the product has 2+ batches (client picks)', async () => {
+    const multiProduct = await admin
+      .from('products_services')
+      .insert({ tenant_id: tenantId, type: 'live_class', name: 'Multi-batch HIIT', amount_minor: 200000 })
+      .select()
+      .single();
+    expect(multiProduct.error).toBeNull();
+    const mpId = multiProduct.data!.id;
+
+    const batchA = await admin
+      .from('classes')
+      .insert({ tenant_id: tenantId, title: 'Batch A', instructor_id: ownerMemberId, product_id: mpId, is_recorded: false })
+      .select()
+      .single();
+    expect(batchA.error).toBeNull();
+    const batchB = await admin
+      .from('classes')
+      .insert({ tenant_id: tenantId, title: 'Batch B', instructor_id: managerMemberId, product_id: mpId, is_recorded: false })
+      .select()
+      .single();
+    expect(batchB.error).toBeNull();
+
+    const order = await admin
+      .from('orders')
+      .insert({ tenant_id: tenantId, client_id: otherClientId, product_id: mpId, amount_minor: 200000, status: 'created' })
+      .select()
+      .single();
+    expect(order.error).toBeNull();
+
+    const paid = await admin.from('orders').update({ status: 'paid' }).eq('id', order.data!.id).select().single();
+    expect(paid.error).toBeNull();
+    // paid_at is stamped by the trigger, driving the 24h auto-assign window.
+    expect(paid.data!.paid_at).not.toBeNull();
+
+    // No enrollment yet — the buyer must choose a batch.
+    const rows = await admin
+      .from('enrollments')
+      .select('id')
+      .eq('client_id', otherClientId)
+      .in('class_id', [batchA.data!.id, batchB.data!.id]);
+    expect(rows.error).toBeNull();
+    expect(rows.data!.length).toBe(0);
+  });
+
   it('per-instructor scoping: each class carries its own instructor', async () => {
     const rows = await admin
       .from('classes')

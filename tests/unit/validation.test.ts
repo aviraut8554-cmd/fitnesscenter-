@@ -132,29 +132,74 @@ describe('productCreateSchema', () => {
 });
 
 describe('offeringCreateSchema', () => {
-  it('accepts a full live paid offering with schedule + merchandising', () => {
+  it('accepts a full live paid offering with a batch + merchandising', () => {
     const res = offeringCreateSchema.safeParse({
       name: 'Morning HIIT Batch',
-      classType: 'live',
       pricingType: 'paid',
       amountMinor: 149900,
       billingCycle: 'monthly',
-      schedule: { days: ['mon', 'wed', 'fri'], startTime: '07:00', endTime: '08:00', accessLink: 'https://meet.example.com/x' },
+      batches: [
+        {
+          classType: 'live',
+          schedule: { days: ['mon', 'wed', 'fri'], startTime: '07:00', endTime: '08:00', accessLink: 'https://meet.example.com/x' },
+          isDefault: true,
+        },
+      ],
       testimonials: ['Loved it'],
       isBestseller: true,
     });
     expect(res.success).toBe(true);
   });
 
+  it('accepts multiple batches with at most one default', () => {
+    expect(
+      offeringCreateSchema.safeParse({
+        name: 'Two batches',
+        pricingType: 'free',
+        batches: [
+          { classType: 'live', isDefault: true },
+          { classType: 'live' },
+        ],
+      }).success,
+    ).toBe(true);
+  });
+
+  it('rejects more than one default batch', () => {
+    expect(
+      offeringCreateSchema.safeParse({
+        name: 'Two defaults',
+        pricingType: 'free',
+        batches: [
+          { classType: 'live', isDefault: true },
+          { classType: 'live', isDefault: true },
+        ],
+      }).success,
+    ).toBe(false);
+  });
+
+  it('requires at least one batch', () => {
+    expect(
+      offeringCreateSchema.safeParse({ name: 'No batch', pricingType: 'free', batches: [] }).success,
+    ).toBe(false);
+  });
+
   it('allows a free offering without a price', () => {
     expect(
-      offeringCreateSchema.safeParse({ name: 'Free intro', pricingType: 'free' }).success,
+      offeringCreateSchema.safeParse({
+        name: 'Free intro',
+        pricingType: 'free',
+        batches: [{ classType: 'live' }],
+      }).success,
     ).toBe(true);
   });
 
   it('requires a price when paid', () => {
     expect(
-      offeringCreateSchema.safeParse({ name: 'Paid', pricingType: 'paid' }).success,
+      offeringCreateSchema.safeParse({
+        name: 'Paid',
+        pricingType: 'paid',
+        batches: [{ classType: 'live' }],
+      }).success,
     ).toBe(false);
   });
 
@@ -163,7 +208,7 @@ describe('offeringCreateSchema', () => {
       offeringCreateSchema.safeParse({
         name: 'Bad hours',
         pricingType: 'free',
-        schedule: { startTime: '09:00', endTime: '08:00' },
+        batches: [{ classType: 'live', schedule: { startTime: '09:00', endTime: '08:00' } }],
       }).success,
     ).toBe(false);
   });
@@ -173,7 +218,7 @@ describe('offeringCreateSchema', () => {
       offeringCreateSchema.safeParse({
         name: 'Bad day',
         pricingType: 'free',
-        schedule: { days: ['funday'] },
+        batches: [{ classType: 'live', schedule: { days: ['funday'] } }],
       }).success,
     ).toBe(false);
   });
