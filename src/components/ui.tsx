@@ -26,7 +26,7 @@ export function Button({
     <button
       {...props}
       disabled={disabled || loading}
-      className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${buttonVariants[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100 ${buttonVariants[variant]} ${className}`}
     >
       {loading ? 'Please wait…' : children}
     </button>
@@ -249,6 +249,22 @@ export function Table({ head, children }: { head: ReactNode; children: ReactNode
         </thead>
         <tbody className="divide-y divide-ink-100">{children}</tbody>
       </table>
+    </div>
+  );
+}
+
+/** Animated placeholder block for loading states. */
+export function Skeleton({ className = '' }: { className?: string }) {
+  return <div className={`animate-pulse rounded-lg bg-ink-100 ${className}`} />;
+}
+
+/** A card-shaped skeleton used while list data loads. */
+export function SkeletonCard() {
+  return (
+    <div className="space-y-3 rounded-2xl border border-ink-100 bg-white p-6 shadow-sm">
+      <Skeleton className="h-32 w-full" />
+      <Skeleton className="h-4 w-2/3" />
+      <Skeleton className="h-4 w-1/3" />
     </div>
   );
 }

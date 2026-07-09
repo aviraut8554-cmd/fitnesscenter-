@@ -41,6 +41,13 @@ export type Branding = {
   logoUrl?: string;
   primaryColor?: string;
   tagline?: string;
+  /** Client PWA home hero. All optional; sensible defaults render when unset. */
+  heroImageUrl?: string;
+  heroTitle?: string;
+  heroSubtitle?: string;
+  heroCtaLabel?: string;
+  /** Where the hero button links: an in-app path (e.g. /app/shop) or a URL. */
+  heroCtaHref?: string;
 };
 
 /** Razorpay connection status for Settings (never includes secrets). */
