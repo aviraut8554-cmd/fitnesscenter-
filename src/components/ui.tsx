@@ -253,6 +253,22 @@ export function Table({ head, children }: { head: ReactNode; children: ReactNode
   );
 }
 
+/** Animated placeholder block for loading states. */
+export function Skeleton({ className = '' }: { className?: string }) {
+  return <div className={`animate-pulse rounded-lg bg-ink-100 ${className}`} />;
+}
+
+/** A card-shaped skeleton used while list data loads. */
+export function SkeletonCard() {
+  return (
+    <div className="space-y-3 rounded-2xl border border-ink-100 bg-white p-6 shadow-sm">
+      <Skeleton className="h-32 w-full" />
+      <Skeleton className="h-4 w-2/3" />
+      <Skeleton className="h-4 w-1/3" />
+    </div>
+  );
+}
+
 export function EmptyState({ title, hint }: { title: string; hint?: string }) {
   return (
     <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-ink-200 bg-white/60 p-10 text-center">

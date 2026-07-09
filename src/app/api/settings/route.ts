@@ -16,6 +16,11 @@ function toBranding(value: Json | null): Branding {
   if (typeof b.logoUrl === 'string') out.logoUrl = b.logoUrl;
   if (typeof b.primaryColor === 'string') out.primaryColor = b.primaryColor;
   if (typeof b.tagline === 'string') out.tagline = b.tagline;
+  if (typeof b.heroImageUrl === 'string') out.heroImageUrl = b.heroImageUrl;
+  if (typeof b.heroTitle === 'string') out.heroTitle = b.heroTitle;
+  if (typeof b.heroSubtitle === 'string') out.heroSubtitle = b.heroSubtitle;
+  if (typeof b.heroCtaLabel === 'string') out.heroCtaLabel = b.heroCtaLabel;
+  if (typeof b.heroCtaHref === 'string') out.heroCtaHref = b.heroCtaHref;
   return out;
 }
 
@@ -80,6 +85,11 @@ export const PUT = handleRoute(async (request) => {
     if (input.branding.logoUrl) b.logoUrl = input.branding.logoUrl;
     if (input.branding.primaryColor) b.primaryColor = input.branding.primaryColor;
     if (input.branding.tagline) b.tagline = input.branding.tagline;
+    if (input.branding.heroImageUrl) b.heroImageUrl = input.branding.heroImageUrl;
+    if (input.branding.heroTitle) b.heroTitle = input.branding.heroTitle;
+    if (input.branding.heroSubtitle) b.heroSubtitle = input.branding.heroSubtitle;
+    if (input.branding.heroCtaLabel) b.heroCtaLabel = input.branding.heroCtaLabel;
+    if (input.branding.heroCtaHref) b.heroCtaHref = input.branding.heroCtaHref;
     patch.branding = b as Json;
   }
 

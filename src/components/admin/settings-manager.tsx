@@ -8,6 +8,8 @@ import { Alert, Badge, Button, Card, Field } from '@/components/ui';
 
 type TenantPatch = SettingsResponse['tenant'];
 
+const HERO_LINK_PRESETS = ['/app/shop', '/app/book', '/app/classes', '/app/health'];
+
 export function SettingsManager() {
   const [data, setData] = useState<SettingsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -19,6 +21,11 @@ export function SettingsManager() {
   const [logoUrl, setLogoUrl] = useState('');
   const [primaryColor, setPrimaryColor] = useState('');
   const [tagline, setTagline] = useState('');
+  const [heroImageUrl, setHeroImageUrl] = useState('');
+  const [heroTitle, setHeroTitle] = useState('');
+  const [heroSubtitle, setHeroSubtitle] = useState('');
+  const [heroCtaLabel, setHeroCtaLabel] = useState('');
+  const [heroCtaHref, setHeroCtaHref] = useState('');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -29,6 +36,11 @@ export function SettingsManager() {
     setLogoUrl(s.tenant.branding.logoUrl ?? '');
     setPrimaryColor(s.tenant.branding.primaryColor ?? '');
     setTagline(s.tenant.branding.tagline ?? '');
+    setHeroImageUrl(s.tenant.branding.heroImageUrl ?? '');
+    setHeroTitle(s.tenant.branding.heroTitle ?? '');
+    setHeroSubtitle(s.tenant.branding.heroSubtitle ?? '');
+    setHeroCtaLabel(s.tenant.branding.heroCtaLabel ?? '');
+    setHeroCtaHref(s.tenant.branding.heroCtaHref ?? '');
   }
 
   useEffect(() => {
@@ -54,7 +66,12 @@ export function SettingsManager() {
       subdomain !== data.tenant.subdomain ||
       logoUrl !== (data.tenant.branding.logoUrl ?? '') ||
       primaryColor !== (data.tenant.branding.primaryColor ?? '') ||
-      tagline !== (data.tenant.branding.tagline ?? ''));
+      tagline !== (data.tenant.branding.tagline ?? '') ||
+      heroImageUrl !== (data.tenant.branding.heroImageUrl ?? '') ||
+      heroTitle !== (data.tenant.branding.heroTitle ?? '') ||
+      heroSubtitle !== (data.tenant.branding.heroSubtitle ?? '') ||
+      heroCtaLabel !== (data.tenant.branding.heroCtaLabel ?? '') ||
+      heroCtaHref !== (data.tenant.branding.heroCtaHref ?? ''));
 
   async function save() {
     setSaving(true);
@@ -65,6 +82,11 @@ export function SettingsManager() {
       if (logoUrl) branding.logoUrl = logoUrl;
       if (primaryColor) branding.primaryColor = primaryColor;
       if (tagline) branding.tagline = tagline;
+      if (heroImageUrl) branding.heroImageUrl = heroImageUrl;
+      if (heroTitle) branding.heroTitle = heroTitle;
+      if (heroSubtitle) branding.heroSubtitle = heroSubtitle;
+      if (heroCtaLabel) branding.heroCtaLabel = heroCtaLabel;
+      if (heroCtaHref) branding.heroCtaHref = heroCtaHref;
       const res = await api.put<{ tenant: TenantPatch }>('/api/settings', {
         name,
         subdomain,
@@ -144,6 +166,68 @@ export function SettingsManager() {
             onChange={(e) => setTagline(e.target.value)}
             placeholder="Train hard. Live well."
           />
+
+          <div className="space-y-4 border-t border-ink-100 pt-4">
+            <div>
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-ink-500">
+                Client home hero
+              </h3>
+              <p className="mt-1 text-xs text-ink-400">
+                The banner clients see at the top of their app home. Leave blank for a default.
+              </p>
+            </div>
+            <Field
+              label="Hero image URL"
+              value={heroImageUrl}
+              onChange={(e) => setHeroImageUrl(e.target.value)}
+              placeholder="https://…/banner.jpg"
+            />
+            <Field
+              label="Headline"
+              value={heroTitle}
+              onChange={(e) => setHeroTitle(e.target.value)}
+              placeholder="Let's get to work."
+            />
+            <Field
+              label="Subtext"
+              value={heroSubtitle}
+              onChange={(e) => setHeroSubtitle(e.target.value)}
+              placeholder="Your training, classes and progress — all in one place."
+            />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field
+                label="Button label"
+                value={heroCtaLabel}
+                onChange={(e) => setHeroCtaLabel(e.target.value)}
+                placeholder="Browse plans"
+              />
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-ink-700">Button link</span>
+                <select
+                  value={HERO_LINK_PRESETS.includes(heroCtaHref) ? heroCtaHref : 'custom'}
+                  onChange={(e) =>
+                    setHeroCtaHref(e.target.value === 'custom' ? '' : e.target.value)
+                  }
+                  className="w-full rounded-lg border border-ink-200 bg-white px-3.5 py-2.5 text-sm text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+                >
+                  <option value="/app/shop">Shop</option>
+                  <option value="/app/book">Book a consultation</option>
+                  <option value="/app/classes">Classes</option>
+                  <option value="/app/health">Health &amp; progress</option>
+                  <option value="custom">Custom URL…</option>
+                </select>
+              </label>
+            </div>
+            {!HERO_LINK_PRESETS.includes(heroCtaHref) ? (
+              <Field
+                label="Custom link"
+                value={heroCtaHref}
+                onChange={(e) => setHeroCtaHref(e.target.value)}
+                placeholder="/app/shop or https://…"
+              />
+            ) : null}
+          </div>
+
           {error ? <Alert>{error}</Alert> : null}
           {saved && !dirty ? <Alert tone="info">Settings saved.</Alert> : null}
           <Button onClick={save} loading={saving} disabled={!dirty}>

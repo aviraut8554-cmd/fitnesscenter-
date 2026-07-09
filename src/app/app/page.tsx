@@ -1,29 +1,34 @@
-import Link from 'next/link';
-import { Card } from '@/components/ui';
+import { redirect } from 'next/navigation';
+import { ClientHome, type HomeHero } from '@/components/client/home';
+import { getClientMembership } from '@/lib/session';
+import { createServerSupabase } from '@/lib/supabase/server';
 
-const TILES = [
-  { label: 'Shop plans', href: '/app/shop', desc: 'Browse and buy programs' },
-  { label: 'My orders', href: '/app/orders', desc: 'Payments and invoices' },
-  { label: 'Health form', href: '/app/health', desc: 'Keep your profile updated' },
-];
+export const dynamic = 'force-dynamic';
 
-export default function ClientHomePage() {
-  return (
-    <div className="space-y-4">
-      <div className="rounded-2xl bg-ink-900 p-5 text-white">
-        <h1 className="text-xl font-bold">Let&apos;s get to work.</h1>
-        <p className="mt-1 text-sm text-ink-300">Your coaching hub — programs, payments and progress.</p>
-      </div>
-      <div className="grid gap-3">
-        {TILES.map((t) => (
-          <Link key={t.href} href={t.href}>
-            <Card className="transition-shadow hover:shadow-md">
-              <h3 className="text-base font-bold text-ink-900">{t.label}</h3>
-              <p className="mt-1 text-sm text-ink-500">{t.desc}</p>
-            </Card>
-          </Link>
-        ))}
-      </div>
-    </div>
-  );
+/** Read the hero config out of the tenant branding jsonb (all fields optional). */
+function toHero(value: unknown): HomeHero {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const b = value as Record<string, unknown>;
+  const str = (v: unknown) => (typeof v === 'string' && v ? v : undefined);
+  return {
+    title: str(b.heroTitle),
+    subtitle: str(b.heroSubtitle),
+    imageUrl: str(b.heroImageUrl),
+    ctaLabel: str(b.heroCtaLabel),
+    ctaHref: str(b.heroCtaHref),
+  };
+}
+
+export default async function ClientHomePage() {
+  const membership = await getClientMembership();
+  if (!membership) redirect('/client-login');
+
+  const supabase = await createServerSupabase();
+  const { data: tenant } = await supabase
+    .from('tenants')
+    .select('branding')
+    .eq('id', membership.tenantId)
+    .maybeSingle();
+
+  return <ClientHome fullName={membership.fullName} hero={toHero(tenant?.branding)} />;
 }
