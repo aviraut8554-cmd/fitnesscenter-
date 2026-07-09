@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { friendlyError } from '@/lib/client-errors';
 import type { BookingSettingsRow, ClientClass } from '@/lib/admin-types';
 import { Alert, Avatar, Badge, Button, Card, EmptyState, SkeletonCard } from '@/components/ui';
 import { BatchChooser } from '@/components/client/batch-chooser';
+import { PullToRefresh } from '@/components/client/pull-to-refresh';
 
 function fmt(iso: string, tz?: string): string {
   return new Intl.DateTimeFormat(undefined, {
@@ -20,6 +21,7 @@ function untilLabel(iso: string): string {
   const diffMs = new Date(iso).getTime() - Date.now();
   if (diffMs <= 0) return 'happening now';
   const mins = Math.round(diffMs / 60000);
+  if (mins < 1) return 'in <1 min';
   if (mins < 60) return `in ${mins} min`;
   const hours = Math.round(mins / 60);
   if (hours < 24) return `in ${hours}h`;
@@ -31,6 +33,17 @@ export function MyClasses() {
   const [classes, setClasses] = useState<ClientClass[] | null>(null);
   const [tz, setTz] = useState<string | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const d = await api.get<{ classes: ClientClass[] }>('/api/my-classes');
+      setClasses(d.classes);
+      setError(null);
+    } catch (err) {
+      setClasses((prev) => prev ?? []);
+      setError(friendlyError(err, 'Could not load your classes'));
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -61,15 +74,9 @@ export function MyClasses() {
     );
 
   return (
+    <PullToRefresh onRefresh={load}>
     <div className="space-y-4">
-      <BatchChooser
-        onResolved={() => {
-          api
-            .get<{ classes: ClientClass[] }>('/api/my-classes')
-            .then((d) => setClasses(d.classes))
-            .catch(() => undefined);
-        }}
-      />
+      <BatchChooser onResolved={() => void load()} />
 
       {classes.length === 0 ? (
         <EmptyState
@@ -150,5 +157,6 @@ export function MyClasses() {
         );
       })}
     </div>
+    </PullToRefresh>
   );
 }

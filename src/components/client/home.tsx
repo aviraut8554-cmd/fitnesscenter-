@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { friendlyError } from '@/lib/client-errors';
 import type { ClientClass, ClientSession } from '@/lib/admin-types';
 import { Alert, Button, Card, Skeleton } from '@/components/ui';
 import { BatchChooser } from '@/components/client/batch-chooser';
+import { PullToRefresh } from '@/components/client/pull-to-refresh';
 
 export type HomeHero = {
   title?: string;
@@ -32,6 +33,7 @@ function untilLabel(iso: string): string {
   const diffMs = new Date(iso).getTime() - Date.now();
   if (diffMs <= 0) return 'happening now';
   const mins = Math.round(diffMs / 60000);
+  if (mins < 1) return 'in <1 min';
   if (mins < 60) return `in ${mins} min`;
   const hours = Math.round(mins / 60);
   if (hours < 24) return `in ${hours}h`;
@@ -73,6 +75,17 @@ export function ClientHome({ fullName, hero }: { fullName: string; hero: HomeHer
   const [summary, setSummary] = useState<Summary | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const load = useCallback(async () => {
+    try {
+      const d = await api.get<{ classes: ClientClass[] }>('/api/my-classes');
+      setSummary(summarize(d.classes));
+      setError(null);
+    } catch (err) {
+      setSummary({ activeClasses: 0, upcomingCount: 0, next: null, nextLabel: null });
+      setError(friendlyError(err, 'Could not load your classes'));
+    }
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     api
@@ -97,6 +110,7 @@ export function ClientHome({ fullName, hero }: { fullName: string; hero: HomeHer
   const isExternal = /^https?:\/\//.test(ctaHref);
 
   return (
+    <PullToRefresh onRefresh={load}>
     <div className="space-y-4">
       {/* Hero / momentum banner */}
       <div className="relative overflow-hidden rounded-2xl bg-ink-900 p-5 text-white">
@@ -190,5 +204,6 @@ export function ClientHome({ fullName, hero }: { fullName: string; hero: HomeHer
         ))}
       </div>
     </div>
+    </PullToRefresh>
   );
 }
