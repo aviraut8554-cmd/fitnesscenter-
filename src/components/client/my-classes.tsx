@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { friendlyError } from '@/lib/client-errors';
 import type { BookingSettingsRow, ClientClass } from '@/lib/admin-types';
 import { Alert, Avatar, Badge, Button, Card, EmptyState, SkeletonCard } from '@/components/ui';
 import { BatchChooser } from '@/components/client/batch-chooser';
+import { PullToRefresh } from '@/components/client/pull-to-refresh';
 
 function fmt(iso: string, tz?: string): string {
   return new Intl.DateTimeFormat(undefined, {
@@ -33,6 +34,17 @@ export function MyClasses() {
   const [tz, setTz] = useState<string | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
 
+  const load = useCallback(async () => {
+    try {
+      const d = await api.get<{ classes: ClientClass[] }>('/api/my-classes');
+      setClasses(d.classes);
+      setError(null);
+    } catch (err) {
+      setClasses((prev) => prev ?? []);
+      setError(friendlyError(err, 'Could not load your classes'));
+    }
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     api
@@ -52,25 +64,20 @@ export function MyClasses() {
     };
   }, []);
 
-  if (error) return <Alert>{error}</Alert>;
   if (classes === null)
     return (
       <div className="space-y-3">
+        {error ? <Alert>{error}</Alert> : null}
         <SkeletonCard />
         <SkeletonCard />
       </div>
     );
 
   return (
+    <PullToRefresh onRefresh={load}>
     <div className="space-y-4">
-      <BatchChooser
-        onResolved={() => {
-          api
-            .get<{ classes: ClientClass[] }>('/api/my-classes')
-            .then((d) => setClasses(d.classes))
-            .catch(() => undefined);
-        }}
-      />
+      {error ? <Alert>{error}</Alert> : null}
+      <BatchChooser onResolved={() => void load()} />
 
       {classes.length === 0 ? (
         <EmptyState
@@ -151,5 +158,6 @@ export function MyClasses() {
         );
       })}
     </div>
+    </PullToRefresh>
   );
 }
