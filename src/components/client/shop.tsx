@@ -11,7 +11,7 @@ import {
   type Product,
 } from '@/lib/admin-types';
 import { formatMoney } from '@/lib/format';
-import { Alert, Badge, Button, Card, EmptyState } from '@/components/ui';
+import { Alert, Badge, Button, Card, EmptyState, SkeletonCard } from '@/components/ui';
 import { BatchChooser } from '@/components/client/batch-chooser';
 import { useToast } from '@/components/toast';
 
@@ -146,11 +146,14 @@ export function ClientShop() {
 
 
       {products === null ? (
-        <p className="text-sm text-ink-500">Loading store…</p>
+        <div className="space-y-3">
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
       ) : products.length === 0 ? (
         <EmptyState
-          title="Nothing for sale yet"
-          hint="Your coach has not published any programs. Check back soon."
+          title="Your journey starts here"
+          hint="Your coach hasn't published any programs yet. Check back soon."
         />
       ) : (
         <div className="space-y-3">
@@ -205,7 +208,7 @@ export function ClientShop() {
                     {BILLING_CYCLE_LABELS[p.billing_cycle]}
                   </span>
                 </div>
-                <Button loading={buying === p.id} onClick={() => buy(p)}>
+                <Button loading={buying === p.id} onClick={() => buy(p)} className="rounded-full">
                   Buy now
                 </Button>
               </div>

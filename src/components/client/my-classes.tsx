@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { friendlyError } from '@/lib/client-errors';
 import type { BookingSettingsRow, ClientClass } from '@/lib/admin-types';
-import { Alert, Badge, Button, Card, EmptyState } from '@/components/ui';
+import { Alert, Avatar, Badge, Button, Card, EmptyState, SkeletonCard } from '@/components/ui';
 import { BatchChooser } from '@/components/client/batch-chooser';
 
 function fmt(iso: string, tz?: string): string {
@@ -13,6 +13,18 @@ function fmt(iso: string, tz?: string): string {
     timeStyle: 'short',
     timeZone: tz,
   }).format(new Date(iso));
+}
+
+/** Human "in 3h" / "in 2 days" countdown to a start time. */
+function untilLabel(iso: string): string {
+  const diffMs = new Date(iso).getTime() - Date.now();
+  if (diffMs <= 0) return 'happening now';
+  const mins = Math.round(diffMs / 60000);
+  if (mins < 60) return `in ${mins} min`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `in ${hours}h`;
+  const days = Math.round(hours / 24);
+  return `in ${days} day${days === 1 ? '' : 's'}`;
 }
 
 export function MyClasses() {
@@ -40,7 +52,13 @@ export function MyClasses() {
   }, []);
 
   if (error) return <Alert>{error}</Alert>;
-  if (classes === null) return <p className="text-sm text-ink-500">Loading…</p>;
+  if (classes === null)
+    return (
+      <div className="space-y-3">
+        <SkeletonCard />
+        <SkeletonCard />
+      </div>
+    );
 
   return (
     <div className="space-y-4">
@@ -63,19 +81,30 @@ export function MyClasses() {
       {classes.map((c) => {
         const upcoming = c.sessions.filter((s) => new Date(s.endsAt).getTime() >= Date.now());
         const liveNow = c.sessions.find((s) => s.isLive);
+        const nextUpcoming = upcoming[0];
         return (
           <Card key={c.id}>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-lg font-bold text-ink-900">{c.title}</span>
-              <Badge tone={c.isRecorded ? 'neutral' : 'brand'}>
-                {c.isRecorded ? 'Recorded' : 'Live'}
-              </Badge>
-              {liveNow ? <Badge tone="success">Live now</Badge> : null}
+            <div className="flex items-start gap-3">
+              <Avatar name={c.instructorName} size={40} />
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-lg font-bold text-ink-900">{c.title}</span>
+                  <Badge tone={c.isRecorded ? 'neutral' : 'brand'}>
+                    {c.isRecorded ? 'Recorded' : 'Live'}
+                  </Badge>
+                  {liveNow ? <Badge tone="success">Live now</Badge> : null}
+                </div>
+                {c.instructorName ? (
+                  <p className="mt-0.5 text-sm text-ink-500">Coach: {c.instructorName}</p>
+                ) : null}
+                {!c.isRecorded && !liveNow && nextUpcoming ? (
+                  <p className="mt-0.5 text-xs font-medium text-brand-600">
+                    Next session {untilLabel(nextUpcoming.startsAt)}
+                  </p>
+                ) : null}
+              </div>
             </div>
-            {c.instructorName ? (
-              <p className="mt-1 text-sm text-ink-500">Coach: {c.instructorName}</p>
-            ) : null}
-            {c.description ? <p className="mt-1 text-sm text-ink-600">{c.description}</p> : null}
+            {c.description ? <p className="mt-2 text-sm text-ink-600">{c.description}</p> : null}
 
             <div className="mt-4 space-y-2">
               {c.isRecorded ? (

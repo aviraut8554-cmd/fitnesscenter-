@@ -88,6 +88,13 @@ export const healthFormSchema = z.object({
 export type HealthFormInput = z.infer<typeof healthFormSchema>;
 
 /** Tenant branding stored in `tenants.branding` (jsonb). All fields optional. */
+const hrefSchema = z
+  .string()
+  .max(2000)
+  .refine((v) => v === '' || v.startsWith('/') || /^https?:\/\//.test(v), {
+    message: 'Use an in-app path (e.g. /app/shop) or a full https:// URL',
+  });
+
 export const brandingSchema = z.object({
   logoUrl: z.string().url().max(2000).or(z.literal('')).optional(),
   primaryColor: z
@@ -95,6 +102,11 @@ export const brandingSchema = z.object({
     .regex(/^#([0-9a-fA-F]{6})$/, { message: 'Use a 6-digit hex colour, e.g. #FF5A1F' })
     .optional(),
   tagline: z.string().max(160).optional(),
+  heroImageUrl: z.string().url().max(2000).or(z.literal('')).optional(),
+  heroTitle: z.string().max(80).optional(),
+  heroSubtitle: z.string().max(160).optional(),
+  heroCtaLabel: z.string().max(40).optional(),
+  heroCtaHref: hrefSchema.optional(),
 });
 export type BrandingInput = z.infer<typeof brandingSchema>;
 
