@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { api, ApiClientError } from '@/lib/api';
+import { api } from '@/lib/api';
+import { friendlyError } from '@/lib/client-errors';
 import { PRODUCT_TYPE_LABELS, type OrderWithRelations } from '@/lib/admin-types';
 import { formatMoney } from '@/lib/format';
 import {
@@ -29,7 +30,7 @@ export function ClientOrders() {
       .catch((err: unknown) => {
         if (cancelled) return;
         setOrders([]);
-        setError(err instanceof ApiClientError ? err.message : 'Could not load your orders');
+        setError(friendlyError(err, 'Could not load your orders'));
       });
     return () => {
       cancelled = true;

@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { api, ApiClientError } from '@/lib/api';
+import { api } from '@/lib/api';
+import { friendlyError } from '@/lib/client-errors';
 import type { BookingSettingsRow, BookingWithRelations, Coach, Slot } from '@/lib/admin-types';
 import { Alert, BookingStatusBadge, Button, Card, EmptyState } from '@/components/ui';
 
@@ -65,7 +66,7 @@ export function BookConsultation() {
         if (d.coaches[0]) setCoachId(d.coaches[0].id);
       })
       .catch((e: unknown) => {
-        if (!cancelled) setError(e instanceof ApiClientError ? e.message : 'Could not load coaches');
+        if (!cancelled) setError(friendlyError(e, 'Could not load coaches'));
       });
     api
       .get<{ bookings: BookingWithRelations[] }>('/api/bookings')
@@ -94,7 +95,7 @@ export function BookConsultation() {
       setSlots(d.slots);
       setTz(d.timezone);
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : 'Could not load slots');
+      setError(friendlyError(err, 'Could not load slots'));
     } finally {
       setLoadingSlots(false);
     }
@@ -110,7 +111,7 @@ export function BookConsultation() {
       setNotice('Your consultation is booked.');
       await loadMine();
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : 'Could not book slot');
+      setError(friendlyError(err, 'Could not book slot'));
     } finally {
       setSaving(false);
     }
@@ -124,7 +125,7 @@ export function BookConsultation() {
       await api.patch(`/api/bookings/${id}`, { status: 'cancelled' });
       await loadMine();
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : 'Could not cancel');
+      setError(friendlyError(err, 'Could not cancel'));
     } finally {
       setBusyId(null);
     }

@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { api, ApiClientError } from '@/lib/api';
+import { api } from '@/lib/api';
+import { friendlyError } from '@/lib/client-errors';
 import type { MeResponse } from '@/lib/admin-types';
 import { Alert, Button, Card, Field } from '@/components/ui';
 
@@ -31,7 +32,7 @@ export function ClientProfileForm() {
       })
       .catch((err: unknown) => {
         if (!cancelled) {
-          setLoadError(err instanceof ApiClientError ? err.message : 'Could not load your profile');
+          setLoadError(friendlyError(err, 'Could not load your profile'));
         }
       });
     return () => {
@@ -55,7 +56,7 @@ export function ClientProfileForm() {
       setPhone(res.client.phone ?? '');
       setSaved(true);
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : 'Could not save your profile');
+      setError(friendlyError(err, 'Could not save your profile'));
     } finally {
       setSaving(false);
     }
