@@ -113,7 +113,7 @@ export async function PATCH(request: Request, ctx: Ctx): Promise<Response> {
 
     const { data: offering, error } = await supabase
       .from('products_services')
-      .select('*, batches:classes(*, instructor:team_members(id, name), enrollments(count))')
+      .select('*, batches:classes!classes_product_id_fkey(*, instructor:team_members(id, name), enrollments(count))')
       .eq('tenant_id', tenantId)
       .eq('id', productId)
       .maybeSingle();

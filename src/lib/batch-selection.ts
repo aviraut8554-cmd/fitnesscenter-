@@ -74,7 +74,7 @@ export async function pendingSelections(
   const { data: products } = await admin
     .from('products_services')
     .select(
-      'id, name, default_class_id, batches:classes(id, title, is_recorded, schedule, capacity, product_id, instructor:team_members(name), enrollments(count))',
+      'id, name, default_class_id, batches:classes!classes_product_id_fkey(id, title, is_recorded, schedule, capacity, product_id, instructor:team_members(name), enrollments(count))',
     )
     .eq('tenant_id', tenantId)
     .in('id', productIds);
