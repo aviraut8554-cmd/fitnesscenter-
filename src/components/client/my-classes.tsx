@@ -64,10 +64,10 @@ export function MyClasses() {
     };
   }, []);
 
-  if (error) return <Alert>{error}</Alert>;
   if (classes === null)
     return (
       <div className="space-y-3">
+        {error ? <Alert>{error}</Alert> : null}
         <SkeletonCard />
         <SkeletonCard />
       </div>
@@ -76,6 +76,7 @@ export function MyClasses() {
   return (
     <PullToRefresh onRefresh={load}>
     <div className="space-y-4">
+      {error ? <Alert>{error}</Alert> : null}
       <BatchChooser onResolved={() => void load()} />
 
       {classes.length === 0 ? (
