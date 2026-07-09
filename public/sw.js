@@ -45,8 +45,12 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE).then((cache) => cache.put(request, copy));
+          // Only cache good responses so a transient error page never
+          // masks the offline fallback on a later offline visit.
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE).then((cache) => cache.put(request, copy));
+          }
           return response;
         })
         .catch(() =>
@@ -62,10 +66,12 @@ self.addEventListener('fetch', (event) => {
         cache.match(request).then((cached) => {
           const network = fetch(request)
             .then((response) => {
-              cache.put(request, response.clone());
+              if (response.ok) cache.put(request, response.clone());
               return response;
             })
-            .catch(() => cached);
+            // Never resolve respondWith with undefined: fall back to the
+            // cached copy if any, else a synthetic error response.
+            .catch(() => cached || Response.error());
           return cached || network;
         }),
       ),
