@@ -20,6 +20,7 @@ function untilLabel(iso: string): string {
   const diffMs = new Date(iso).getTime() - Date.now();
   if (diffMs <= 0) return 'happening now';
   const mins = Math.round(diffMs / 60000);
+  if (mins < 1) return 'in <1 min';
   if (mins < 60) return `in ${mins} min`;
   const hours = Math.round(mins / 60);
   if (hours < 24) return `in ${hours}h`;
