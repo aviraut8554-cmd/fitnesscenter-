@@ -1,3 +1,4 @@
+import { resolveInstructorNames } from '@/lib/class-service';
 import type { AdminSupabase } from '@/lib/supabase/admin';
 
 /** How long a buyer has to pick a batch before one is auto-assigned. */
@@ -32,11 +33,15 @@ type ClassRow = {
   schedule: unknown;
   capacity: number | null;
   product_id: string | null;
-  instructor: { name: string } | null;
+  instructor_id: string | null;
   enrollments: { count: number }[] | null;
 };
 
-function toOption(c: ClassRow, defaultClassId: string | null): BatchOption {
+function toOption(
+  c: ClassRow,
+  defaultClassId: string | null,
+  names: Map<string, string>,
+): BatchOption {
   const enrolledCount = c.enrollments?.[0]?.count ?? 0;
   return {
     id: c.id,
@@ -44,7 +49,7 @@ function toOption(c: ClassRow, defaultClassId: string | null): BatchOption {
     isRecorded: c.is_recorded,
     schedule: c.schedule,
     capacity: c.capacity,
-    instructorName: c.instructor?.name ?? null,
+    instructorName: c.instructor_id ? (names.get(c.instructor_id) ?? null) : null,
     enrolledCount,
     seatsLeft: c.capacity == null ? null : Math.max(0, c.capacity - enrolledCount),
     isDefault: c.id === defaultClassId,
@@ -74,7 +79,7 @@ export async function pendingSelections(
   const { data: products } = await admin
     .from('products_services')
     .select(
-      'id, name, default_class_id, batches:classes!classes_product_id_fkey(id, title, is_recorded, schedule, capacity, product_id, instructor:team_members(name), enrollments(count))',
+      'id, name, default_class_id, batches:classes!classes_product_id_fkey(id, title, is_recorded, schedule, capacity, product_id, instructor_id, enrollments(count))',
     )
     .eq('tenant_id', tenantId)
     .in('id', productIds);
@@ -95,6 +100,14 @@ export async function pendingSelections(
     .in('id', clientIds);
   const clientName = new Map((clients ?? []).map((c) => [c.id, c.full_name]));
 
+  // `team_members` has no name column — names live in auth metadata.
+  const names = await resolveInstructorNames(
+    tenantId,
+    (products ?? [])
+      .flatMap((p) => (p.batches as ClassRow[]).map((b) => b.instructor_id))
+      .filter((v): v is string => Boolean(v)),
+  );
+
   const result: PendingSelection[] = [];
   for (const order of orders) {
     const product = byProduct.get(order.product_id);
@@ -109,7 +122,7 @@ export async function pendingSelections(
       clientId: order.client_id,
       clientName: clientName.get(order.client_id) ?? 'Client',
       paidAt: order.paid_at,
-      batches: batches.map((b) => toOption(b, product?.default_class_id ?? null)),
+      batches: batches.map((b) => toOption(b, product?.default_class_id ?? null, names)),
     });
   }
   return result;

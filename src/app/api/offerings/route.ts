@@ -1,5 +1,6 @@
 import type { Json } from '@/lib/database.types';
 import { requireTeamMember } from '@/lib/auth';
+import { resolveInstructorNames } from '@/lib/class-service';
 import { ApiError, handleRoute, jsonOk, parseJson } from '@/lib/http';
 import {
   offeringCreateSchema,
@@ -67,15 +68,32 @@ export const GET = handleRoute(async (request) => {
   const { data, error } = await supabase
     .from('products_services')
     .select(
-      '*, batches:classes!classes_product_id_fkey(*, instructor:team_members(id, name), sessions:class_sessions(*), enrollments(count))',
+      '*, batches:classes!classes_product_id_fkey(*, sessions:class_sessions(*), enrollments(count))',
     )
     .eq('tenant_id', tenantId)
     .order('created_at', { ascending: false });
   if (error) throw ApiError.unprocessable(error.message);
 
-  const offerings = (data ?? []).filter(
+  const withBatches = (data ?? []).filter(
     (p) => Array.isArray(p.batches) && p.batches.length > 0,
   );
+
+  // `team_members` has no name column — names live in auth metadata.
+  const names = await resolveInstructorNames(
+    tenantId,
+    withBatches
+      .flatMap((p) => p.batches.map((b) => b.instructor_id))
+      .filter((id): id is string => Boolean(id)),
+  );
+  const offerings = withBatches.map((p) => ({
+    ...p,
+    batches: p.batches.map((b) => ({
+      ...b,
+      instructor: b.instructor_id
+        ? { id: b.instructor_id, name: names.get(b.instructor_id) ?? 'Coach' }
+        : null,
+    })),
+  }));
   return jsonOk({ offerings });
 });
 
