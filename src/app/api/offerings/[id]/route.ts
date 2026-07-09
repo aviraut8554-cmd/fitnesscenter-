@@ -1,5 +1,6 @@
 import type { Database } from '@/lib/database.types';
 import { requireTeamMember } from '@/lib/auth';
+import { resolveInstructorNames } from '@/lib/class-service';
 import { ApiError, handleRoute, jsonOk, parseJson } from '@/lib/http';
 import { offeringUpdateSchema } from '@/lib/validation';
 import { batchRow } from '../route';
@@ -111,13 +112,30 @@ export async function PATCH(request: Request, ctx: Ctx): Promise<Response> {
       .update({ default_class_id: defaultClassId })
       .eq('id', productId);
 
-    const { data: offering, error } = await supabase
+    const { data: row, error } = await supabase
       .from('products_services')
-      .select('*, batches:classes!classes_product_id_fkey(*, instructor:team_members(id, name), enrollments(count))')
+      .select('*, batches:classes!classes_product_id_fkey(*, enrollments(count))')
       .eq('tenant_id', tenantId)
       .eq('id', productId)
       .maybeSingle();
     if (error) throw ApiError.unprocessable(error.message);
+
+    const batches = row?.batches ?? [];
+    const names = await resolveInstructorNames(
+      tenantId,
+      batches.map((b) => b.instructor_id).filter((v): v is string => Boolean(v)),
+    );
+    const offering = row
+      ? {
+          ...row,
+          batches: batches.map((b) => ({
+            ...b,
+            instructor: b.instructor_id
+              ? { id: b.instructor_id, name: names.get(b.instructor_id) ?? 'Coach' }
+              : null,
+          })),
+        }
+      : row;
 
     return jsonOk({ offering });
   })(request, {});
