@@ -17,6 +17,7 @@ import {
   TagChips,
   TeamStatusBadge,
 } from '@/components/ui';
+import { ImageUploadField } from '@/components/admin/image-upload-field';
 
 type Detail = TeamMemberDetail['teamMember'];
 
@@ -146,13 +147,11 @@ export function TeamMemberProfile({
 
         {editing ? (
           <form onSubmit={save} className="mt-6 space-y-4 border-t border-ink-100 pt-6">
-            <Field
+            <ImageUploadField
               label="Profile photo URL"
               name="photoUrl"
-              type="url"
-              placeholder="https://…"
               value={photoUrl}
-              onChange={(e) => setPhotoUrl(e.target.value)}
+              onValueChange={setPhotoUrl}
             />
             <Field
               label="Specialty tags (comma-separated)"
