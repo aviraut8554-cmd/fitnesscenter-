@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { api, ApiClientError } from '@/lib/api';
+import { api } from '@/lib/api';
+import { friendlyError } from '@/lib/client-errors';
 import type { HealthForm } from '@/lib/admin-types';
 import { Alert, Badge, Button, Card, EmptyState } from '@/components/ui';
 
@@ -41,7 +42,7 @@ export function ClientHealth({ clientId }: { clientId: string }) {
       .catch((err: unknown) => {
         if (cancelled) return;
         setForms([]);
-        setError(err instanceof ApiClientError ? err.message : 'Could not load your health forms');
+        setError(friendlyError(err, 'Could not load your health forms'));
       });
     return () => {
       cancelled = true;
@@ -71,7 +72,7 @@ export function ClientHealth({ clientId }: { clientId: string }) {
       setValues({});
       setSaved(true);
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : 'Could not submit your update');
+      setError(friendlyError(err, 'Could not submit your update'));
     } finally {
       setSaving(false);
     }

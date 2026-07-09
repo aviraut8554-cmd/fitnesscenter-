@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { api, ApiClientError } from '@/lib/api';
+import { api } from '@/lib/api';
+import { friendlyError } from '@/lib/client-errors';
 import {
   BILLING_CYCLE_LABELS,
   PRODUCT_TYPE_LABELS,
@@ -12,6 +13,7 @@ import {
 import { formatMoney } from '@/lib/format';
 import { Alert, Badge, Button, Card, EmptyState } from '@/components/ui';
 import { BatchChooser } from '@/components/client/batch-chooser';
+import { useToast } from '@/components/toast';
 
 const RAZORPAY_SCRIPT = 'https://checkout.razorpay.com/v1/checkout.js';
 
@@ -54,6 +56,7 @@ function loadRazorpay(): Promise<boolean> {
 }
 
 export function ClientShop() {
+  const toast = useToast();
   const [products, setProducts] = useState<Product[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -73,7 +76,7 @@ export function ClientShop() {
       .catch((err: unknown) => {
         if (cancelled) return;
         setProducts([]);
-        setError(err instanceof ApiClientError ? err.message : 'Could not load the store');
+        setError(friendlyError(err, 'Could not load the store'));
       });
     return () => {
       cancelled = true;
@@ -105,6 +108,7 @@ export function ClientShop() {
         order_id: checkout.razorpayOrderId,
         theme: { color: '#FF5A1F' },
         handler: () => {
+          toast.success(`Payment received for “${product.name}”.`);
           setNotice(
             `Payment received for "${product.name}". If it has multiple batches, choose one below.`,
           );
@@ -125,7 +129,9 @@ export function ClientShop() {
       });
       rzp.open();
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : 'Could not start checkout');
+      const msg = friendlyError(err, 'Could not start checkout');
+      setError(msg);
+      toast.error(msg);
     } finally {
       setBuying(null);
     }

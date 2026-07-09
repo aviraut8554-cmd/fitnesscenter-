@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { api, ApiClientError } from '@/lib/api';
+import { api } from '@/lib/api';
+import { friendlyError } from '@/lib/client-errors';
 import { Alert, Badge, Button, Card } from '@/components/ui';
 
 const WEEKDAY_LABELS: Record<string, string> = {
@@ -68,7 +69,7 @@ export function BatchChooser({
       setError(null);
     } catch (err) {
       setPending([]);
-      setError(err instanceof ApiClientError ? err.message : 'Could not load your batches');
+      setError(friendlyError(err, 'Could not load your batches'));
     }
   }, []);
 
@@ -78,7 +79,7 @@ export function BatchChooser({
       .then((d) => setPending(d.pending))
       .catch((err: unknown) => {
         setPending([]);
-        setError(err instanceof ApiClientError ? err.message : 'Could not load your batches');
+        setError(friendlyError(err, 'Could not load your batches'));
       });
   }, []);
 
@@ -90,7 +91,7 @@ export function BatchChooser({
       await load();
       onResolved?.();
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : 'Could not join that batch');
+      setError(friendlyError(err, 'Could not join that batch'));
     } finally {
       setBusy(null);
     }

@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { api, ApiClientError } from '@/lib/api';
+import { api } from '@/lib/api';
+import { friendlyError } from '@/lib/client-errors';
 import type { BookingSettingsRow, ClientClass } from '@/lib/admin-types';
 import { Alert, Badge, Button, Card, EmptyState } from '@/components/ui';
 import { BatchChooser } from '@/components/client/batch-chooser';
@@ -27,7 +28,7 @@ export function MyClasses() {
       .catch((err: unknown) => {
         if (cancelled) return;
         setClasses([]);
-        setError(err instanceof ApiClientError ? err.message : 'Could not load your classes');
+        setError(friendlyError(err, 'Could not load your classes'));
       });
     api
       .get<{ settings: BookingSettingsRow }>('/api/booking-settings')
