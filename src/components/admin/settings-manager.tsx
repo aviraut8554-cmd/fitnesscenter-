@@ -5,6 +5,7 @@ import { api, ApiClientError } from '@/lib/api';
 import type { Branding, RazorpayStatus, SettingsResponse } from '@/lib/admin-types';
 import { formatMoney } from '@/lib/format';
 import { Alert, Badge, Button, Card, Field } from '@/components/ui';
+import { ImageUploadField } from '@/components/admin/image-upload-field';
 
 type TenantPatch = SettingsResponse['tenant'];
 
@@ -136,10 +137,10 @@ export function SettingsManager() {
               Lowercase letters, digits and hyphens. Clients sign in at this address.
             </span>
           </label>
-          <Field
+          <ImageUploadField
             label="Logo URL"
             value={logoUrl}
-            onChange={(e) => setLogoUrl(e.target.value)}
+            onValueChange={setLogoUrl}
             placeholder="https://…/logo.png"
           />
           <label className="block">
@@ -176,10 +177,10 @@ export function SettingsManager() {
                 The banner clients see at the top of their app home. Leave blank for a default.
               </p>
             </div>
-            <Field
+            <ImageUploadField
               label="Hero image URL"
               value={heroImageUrl}
-              onChange={(e) => setHeroImageUrl(e.target.value)}
+              onValueChange={setHeroImageUrl}
               placeholder="https://…/banner.jpg"
             />
             <Field

@@ -22,6 +22,7 @@ import {
   EmptyState,
   Field,
 } from '@/components/ui';
+import { ImageUploadField } from '@/components/admin/image-upload-field';
 
 type FormState = {
   type: ProductType;
@@ -326,13 +327,11 @@ export function ProductsManager({ viewerRole }: { viewerRole: TeamRole }) {
               <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-ink-500">
                 Client-facing merchandising
               </legend>
-              <Field
+              <ImageUploadField
                 label="Product image URL (shown in the store)"
                 name="imageUrl"
-                type="url"
-                placeholder="https://…"
                 value={form.imageUrl}
-                onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
+                onValueChange={(url) => setForm({ ...form, imageUrl: url })}
               />
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field

@@ -12,6 +12,7 @@ import {
 } from '@/lib/admin-types';
 import { WEEKDAYS, type Weekday } from '@/lib/validation';
 import { Alert, Button, Card, Field } from '@/components/ui';
+import { ImageUploadField } from '@/components/admin/image-upload-field';
 
 const selectClass =
   'w-full rounded-lg border border-ink-200 bg-white px-3.5 py-2.5 text-sm text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30';
@@ -450,13 +451,11 @@ export function OfferingForm({
           <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-ink-500">
             Client-facing merchandising
           </legend>
-          <Field
+          <ImageUploadField
             label="Product image URL (shown in the store)"
             name="imageUrl"
-            type="url"
-            placeholder="https://…"
             value={form.imageUrl}
-            onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
+            onValueChange={(url) => setForm({ ...form, imageUrl: url })}
           />
           <div className="grid gap-4 sm:grid-cols-2">
             <Field
