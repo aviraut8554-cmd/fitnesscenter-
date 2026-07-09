@@ -8,10 +8,10 @@ import {
   type AttendanceStatus,
   type BookingSettingsRow,
   type ClassSession,
-  type ClassWithRelations,
   type Client,
   type EnrollmentWithClient,
   type Offering,
+  type OfferingBatch,
   type OfferingSchedule,
   type TeamMember,
   type TeamRole,
@@ -19,6 +19,22 @@ import {
 import { Alert, Badge, Button, Card, EmptyState } from '@/components/ui';
 import { OfferingForm } from '@/components/admin/offering-form';
 import { formatMoney } from '@/lib/format';
+
+type PendingSelection = {
+  orderId: string;
+  productId: string;
+  productName: string;
+  clientId: string;
+  clientName: string;
+  paidAt: string | null;
+  batches: {
+    id: string;
+    title: string;
+    instructorName: string | null;
+    seatsLeft: number | null;
+    isDefault: boolean;
+  }[];
+};
 
 const WEEKDAY_LABELS: Record<string, string> = {
   mon: 'Mon',
@@ -59,10 +75,15 @@ const ATTENDANCE_TONE: Record<AttendanceStatus, 'neutral' | 'success' | 'warning
   absent: 'danger',
 };
 
+function enrolledCount(b: OfferingBatch): number {
+  return b.enrollments?.[0]?.count ?? 0;
+}
+
 export function ClassesManager({ viewerRole }: { viewerRole: TeamRole }) {
   const canManage = viewerRole === 'owner' || viewerRole === 'manager';
 
-  const [classes, setClasses] = useState<ClassWithRelations[] | null>(null);
+  const [offerings, setOfferings] = useState<Offering[] | null>(null);
+  const [pending, setPending] = useState<PendingSelection[]>([]);
   const [instructors, setInstructors] = useState<TeamMember[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [tz, setTz] = useState<string | undefined>(undefined);
@@ -72,24 +93,36 @@ export function ClassesManager({ viewerRole }: { viewerRole: TeamRole }) {
 
   const load = useCallback(async () => {
     try {
-      const d = await api.get<{ classes: ClassWithRelations[] }>('/api/classes');
-      setClasses(d.classes);
+      const d = await api.get<{ offerings: Offering[] }>('/api/offerings');
+      setOfferings(d.offerings);
       setError(null);
     } catch (err) {
-      setClasses([]);
-      setError(err instanceof ApiClientError ? err.message : 'Could not load classes');
+      setOfferings([]);
+      setError(err instanceof ApiClientError ? err.message : 'Could not load offerings');
     }
-  }, []);
+    if (canManage) {
+      try {
+        const p = await api.get<{ pending: PendingSelection[] }>('/api/offerings/pending');
+        setPending(p.pending);
+      } catch {
+        setPending([]);
+      }
+    }
+  }, [canManage]);
 
   useEffect(() => {
     api
-      .get<{ classes: ClassWithRelations[] }>('/api/classes')
-      .then((d) => setClasses(d.classes))
+      .get<{ offerings: Offering[] }>('/api/offerings')
+      .then((d) => setOfferings(d.offerings))
       .catch((err: unknown) => {
-        setClasses([]);
-        setError(err instanceof ApiClientError ? err.message : 'Could not load classes');
+        setOfferings([]);
+        setError(err instanceof ApiClientError ? err.message : 'Could not load offerings');
       });
     if (canManage) {
+      api
+        .get<{ pending: PendingSelection[] }>('/api/offerings/pending')
+        .then((d) => setPending(d.pending))
+        .catch(() => undefined);
       api
         .get<{ teamMembers: TeamMember[] }>('/api/team')
         .then((d) => setInstructors(d.teamMembers))
@@ -103,7 +136,7 @@ export function ClassesManager({ viewerRole }: { viewerRole: TeamRole }) {
       .get<{ settings: BookingSettingsRow }>('/api/booking-settings')
       .then((d) => setTz(d.settings.timezone))
       .catch(() => undefined);
-  }, [canManage, load]);
+  }, [canManage]);
 
   const formOpen = creating || editing !== null;
 
@@ -133,26 +166,34 @@ export function ClassesManager({ viewerRole }: { viewerRole: TeamRole }) {
 
       {error ? <Alert>{error}</Alert> : null}
 
-      {classes === null ? (
-        <p className="text-sm text-ink-500">Loading classes…</p>
-      ) : classes.length === 0 ? (
+      {canManage && pending.length > 0 ? (
+        <PendingSelectionsPanel pending={pending} onChanged={load} />
+      ) : null}
+
+      {offerings === null ? (
+        <p className="text-sm text-ink-500">Loading offerings…</p>
+      ) : offerings.length === 0 ? (
         <EmptyState
           title="No offerings yet"
-          hint={canManage ? 'Create your first offering — sets up the store product and its class in one form.' : 'Your coaches haven’t scheduled any classes yet.'}
+          hint={
+            canManage
+              ? 'Create your first offering — sets up the store product and its batches in one form.'
+              : 'Your coaches haven’t scheduled any classes yet.'
+          }
         />
       ) : (
         <div className="space-y-4">
-          {classes.map((c) => (
-            <ClassCard
-              key={c.id}
-              cls={c}
+          {offerings.map((o) => (
+            <OfferingCard
+              key={o.id}
+              offering={o}
               tz={tz}
               canManage={canManage}
               clients={clients}
               onChanged={load}
               onEdit={() => {
                 setCreating(false);
-                setEditing(c);
+                setEditing(o);
               }}
             />
           ))}
@@ -162,49 +203,189 @@ export function ClassesManager({ viewerRole }: { viewerRole: TeamRole }) {
   );
 }
 
-function ClassCard({
-  cls,
+function PendingSelectionsPanel({
+  pending,
+  onChanged,
+}: {
+  pending: PendingSelection[];
+  onChanged: () => Promise<void>;
+}) {
+  return (
+    <Card className="border-amber-200 bg-amber-50/40">
+      <h2 className="text-sm font-semibold text-ink-900">
+        Awaiting batch selection ({pending.length})
+      </h2>
+      <p className="mt-0.5 text-xs text-ink-500">
+        These clients paid but haven’t picked a batch. They can choose in their app; if not, the
+        default batch is auto-assigned 24h after payment. You can also assign one now.
+      </p>
+      <ul className="mt-3 space-y-3">
+        {pending.map((p) => (
+          <PendingRow key={p.orderId} row={p} onChanged={onChanged} />
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
+function PendingRow({
+  row,
+  onChanged,
+}: {
+  row: PendingSelection;
+  onChanged: () => Promise<void>;
+}) {
+  const firstOpen = row.batches.find((b) => b.seatsLeft === null || b.seatsLeft > 0);
+  const [classId, setClassId] = useState(firstOpen?.id ?? row.batches[0]?.id ?? '');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function assign() {
+    if (!classId) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.post(`/api/classes/${classId}/enrollments`, { clientId: row.clientId });
+      await onChanged();
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : 'Could not assign batch');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <li className="rounded-lg border border-ink-100 bg-white p-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-ink-900">{row.clientName}</p>
+          <p className="text-xs text-ink-500">{row.productName}</p>
+        </div>
+        <div className="flex flex-wrap items-end gap-2">
+          <select value={classId} onChange={(e) => setClassId(e.target.value)} className={selectClass}>
+            {row.batches.map((b) => (
+              <option key={b.id} value={b.id} disabled={b.seatsLeft !== null && b.seatsLeft <= 0}>
+                {b.title}
+                {b.instructorName ? ` · ${b.instructorName}` : ''}
+                {b.isDefault ? ' (default)' : ''}
+                {b.seatsLeft !== null ? ` · ${b.seatsLeft} left` : ''}
+              </option>
+            ))}
+          </select>
+          <Button onClick={assign} loading={busy} disabled={!classId} className="px-3 py-2 text-xs">
+            Assign
+          </Button>
+        </div>
+      </div>
+      {error ? <div className="mt-2"><Alert>{error}</Alert></div> : null}
+    </li>
+  );
+}
+
+function OfferingCard({
+  offering,
   tz,
   canManage,
   clients,
   onChanged,
   onEdit,
 }: {
-  cls: ClassWithRelations;
+  offering: Offering;
   tz?: string;
   canManage: boolean;
   clients: Client[];
   onChanged: () => Promise<void>;
   onEdit: () => void;
 }) {
-  const [tab, setTab] = useState<'sessions' | 'roster' | null>(null);
-  const schedule = scheduleSummary((cls.schedule ?? {}) as OfferingSchedule);
-  const accessLink = ((cls.schedule ?? {}) as OfferingSchedule).accessLink;
   const price =
-    cls.product && cls.product.amount_minor > 0
-      ? formatMoney(cls.product.amount_minor, cls.product.currency)
-      : cls.product
-        ? 'Free'
-        : null;
+    offering.amount_minor > 0 ? formatMoney(offering.amount_minor, offering.currency) : 'Free';
+  const batches = offering.batches ?? [];
+  const multi = batches.length > 1;
 
   return (
-    <Card className={cls.product && !cls.product.is_active ? 'border-dashed opacity-60' : ''}>
+    <Card className={!offering.is_active ? 'border-dashed opacity-60' : ''}>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-lg font-bold text-ink-900">{cls.title}</span>
-            <Badge tone={cls.is_recorded ? 'neutral' : 'brand'}>
-              {cls.is_recorded ? 'Recorded' : 'Live'}
+            <span className="text-lg font-bold text-ink-900">{offering.name}</span>
+            {offering.is_bestseller ? <Badge tone="warning">Bestseller</Badge> : null}
+            <Badge tone="success">{price}</Badge>
+            <Badge tone="neutral">
+              {batches.length} batch{batches.length === 1 ? '' : 'es'}
             </Badge>
-            {cls.product?.is_bestseller ? <Badge tone="warning">Bestseller</Badge> : null}
-            {price ? <Badge tone="success">{price}</Badge> : null}
+            {!offering.is_active ? <Badge tone="neutral">Inactive</Badge> : null}
           </div>
-          <p className="mt-1 text-sm text-ink-500">
-            {cls.instructor ? `Coach: ${cls.instructor.name}` : 'No instructor assigned'} ·{' '}
-            {cls.enrollmentCount} enrolled · {cls.sessions.length} session
-            {cls.sessions.length === 1 ? '' : 's'}
+          {offering.description ? (
+            <p className="mt-1 text-sm text-ink-600">{offering.description}</p>
+          ) : null}
+          {multi ? (
+            <p className="mt-1 text-xs text-ink-500">
+              Clients pick a batch after payment (default auto-assigned after 24h).
+            </p>
+          ) : null}
+        </div>
+        {canManage ? (
+          <Button variant="secondary" className="px-3 py-1.5 text-xs" onClick={onEdit}>
+            Edit
+          </Button>
+        ) : null}
+      </div>
+
+      <div className="mt-4 space-y-3">
+        {batches.map((b) => (
+          <BatchRow
+            key={b.id}
+            batch={b}
+            isDefault={multi && b.id === offering.default_class_id}
+            tz={tz}
+            canManage={canManage}
+            clients={clients}
+            onChanged={onChanged}
+          />
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+function BatchRow({
+  batch,
+  isDefault,
+  tz,
+  canManage,
+  clients,
+  onChanged,
+}: {
+  batch: OfferingBatch;
+  isDefault: boolean;
+  tz?: string;
+  canManage: boolean;
+  clients: Client[];
+  onChanged: () => Promise<void>;
+}) {
+  const [tab, setTab] = useState<'sessions' | 'roster' | null>(null);
+  const schedule = scheduleSummary((batch.schedule ?? {}) as OfferingSchedule);
+  const accessLink = ((batch.schedule ?? {}) as OfferingSchedule).accessLink;
+  const sessions = batch.sessions ?? [];
+  const count = enrolledCount(batch);
+
+  return (
+    <div className="rounded-lg border border-ink-100 p-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-semibold text-ink-900">{batch.title}</span>
+            <Badge tone={batch.is_recorded ? 'neutral' : 'brand'}>
+              {batch.is_recorded ? 'Recorded' : 'Live'}
+            </Badge>
+            {isDefault ? <Badge tone="success">Default</Badge> : null}
+          </div>
+          <p className="mt-1 text-xs text-ink-500">
+            {batch.instructor ? `Coach: ${batch.instructor.name}` : 'No instructor'} · {count}
+            {batch.capacity != null ? `/${batch.capacity}` : ''} enrolled · {sessions.length} session
+            {sessions.length === 1 ? '' : 's'}
           </p>
-          {schedule ? <p className="mt-1 text-sm text-ink-600">{schedule}</p> : null}
+          {schedule ? <p className="mt-1 text-xs text-ink-600">{schedule}</p> : null}
           {accessLink ? (
             <a
               href={accessLink}
@@ -215,14 +396,8 @@ function ClassCard({
               Access link
             </a>
           ) : null}
-          {cls.description ? <p className="mt-1 text-sm text-ink-600">{cls.description}</p> : null}
         </div>
         <div className="flex flex-wrap gap-2">
-          {canManage ? (
-            <Button variant="secondary" className="px-3 py-1.5 text-xs" onClick={onEdit}>
-              Edit
-            </Button>
-          ) : null}
           <Button
             variant="secondary"
             className="px-3 py-1.5 text-xs"
@@ -243,26 +418,27 @@ function ClassCard({
       </div>
 
       {tab === 'sessions' ? (
-        <SessionsPanel cls={cls} tz={tz} canManage={canManage} onChanged={onChanged} />
+        <SessionsPanel batch={batch} tz={tz} canManage={canManage} onChanged={onChanged} />
       ) : null}
       {tab === 'roster' && canManage ? (
-        <RosterPanel classId={cls.id} clients={clients} onChanged={onChanged} />
+        <RosterPanel classId={batch.id} clients={clients} onChanged={onChanged} />
       ) : null}
-    </Card>
+    </div>
   );
 }
 
 function SessionsPanel({
-  cls,
+  batch,
   tz,
   canManage,
   onChanged,
 }: {
-  cls: ClassWithRelations;
+  batch: OfferingBatch;
   tz?: string;
   canManage: boolean;
   onChanged: () => Promise<void>;
 }) {
+  const sessions = batch.sessions ?? [];
   const [adding, setAdding] = useState(false);
   const [startsAt, setStartsAt] = useState('');
   const [endsAt, setEndsAt] = useState('');
@@ -280,7 +456,7 @@ function SessionsPanel({
     setSaving(true);
     setError(null);
     try {
-      await api.post(`/api/classes/${cls.id}/sessions`, {
+      await api.post(`/api/classes/${batch.id}/sessions`, {
         startsAt: new Date(startsAt).toISOString(),
         endsAt: new Date(endsAt).toISOString(),
         liveLink: liveLink.trim() || undefined,
@@ -309,14 +485,14 @@ function SessionsPanel({
   }
 
   return (
-    <div className="mt-4 border-t border-ink-100 pt-4">
+    <div className="mt-3 border-t border-ink-100 pt-3">
       {error ? <div className="mb-3"><Alert>{error}</Alert></div> : null}
 
-      {cls.sessions.length === 0 ? (
+      {sessions.length === 0 ? (
         <p className="text-sm text-ink-500">No sessions scheduled yet.</p>
       ) : (
         <ul className="space-y-2">
-          {cls.sessions.map((s: ClassSession) => (
+          {sessions.map((s: ClassSession) => (
             <li key={s.id} className="rounded-lg border border-ink-100 p-3">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -324,7 +500,7 @@ function SessionsPanel({
                     {fmt(s.starts_at, tz)} → {fmt(s.ends_at, tz)}
                   </p>
                   <p className="mt-0.5 text-xs text-ink-500">
-                    {s.live_link ? 'Live link set' : cls.is_recorded ? '' : 'No live link'}
+                    {s.live_link ? 'Live link set' : batch.is_recorded ? '' : 'No live link'}
                     {s.recording_url ? ' · Recording set' : ''}
                   </p>
                 </div>
@@ -548,7 +724,7 @@ function RosterPanel({
   }
 
   return (
-    <div className="mt-4 border-t border-ink-100 pt-4">
+    <div className="mt-3 border-t border-ink-100 pt-3">
       {error ? <div className="mb-3"><Alert>{error}</Alert></div> : null}
 
       <div className="mb-3 flex flex-wrap items-end gap-3">
@@ -570,7 +746,8 @@ function RosterPanel({
         <p className="text-sm text-ink-500">Loading…</p>
       ) : enrollments.length === 0 ? (
         <p className="text-sm text-ink-500">
-          No one enrolled yet. Clients are auto-enrolled when they buy the linked product.
+          No one enrolled yet. To move a client here from another batch, enrol them above and remove
+          them from the old batch’s roster.
         </p>
       ) : (
         <ul className="space-y-2">

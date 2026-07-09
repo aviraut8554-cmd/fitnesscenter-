@@ -2,6 +2,7 @@ import { createAdminSupabase } from '@/lib/supabase/admin';
 import { env } from '@/lib/env';
 import { ApiError, handleRoute, jsonOk } from '@/lib/http';
 import { runReminders } from '@/lib/reminder-service';
+import { autoAssignDueSelections } from '@/lib/batch-selection';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +22,8 @@ async function run(request: Request): Promise<Response> {
   }
   const admin = createAdminSupabase();
   const summary = await runReminders(admin);
-  return jsonOk({ ok: true, ...summary });
+  const batchAssignment = await autoAssignDueSelections(admin);
+  return jsonOk({ ok: true, ...summary, batchAssignment });
 }
 
 export const GET = handleRoute(run);

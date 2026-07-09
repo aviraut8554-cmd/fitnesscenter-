@@ -11,6 +11,7 @@ import {
 } from '@/lib/admin-types';
 import { formatMoney } from '@/lib/format';
 import { Alert, Badge, Button, Card, EmptyState } from '@/components/ui';
+import { BatchChooser } from '@/components/client/batch-chooser';
 
 const RAZORPAY_SCRIPT = 'https://checkout.razorpay.com/v1/checkout.js';
 
@@ -57,6 +58,8 @@ export function ClientShop() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [buying, setBuying] = useState<string | null>(null);
+  // Bumped after a payment to re-check for a batch the buyer must choose.
+  const [chooserKey, setChooserKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -103,8 +106,16 @@ export function ClientShop() {
         theme: { color: '#FF5A1F' },
         handler: () => {
           setNotice(
-            `Payment received for "${product.name}". Your access unlocks once the payment is confirmed.`,
+            `Payment received for "${product.name}". If it has multiple batches, choose one below.`,
           );
+          // The webhook marks the order paid a moment later; re-check a few
+          // times so the "choose your batch" prompt appears once it lands.
+          let tries = 0;
+          const timer = setInterval(() => {
+            tries += 1;
+            setChooserKey((k) => k + 1);
+            if (tries >= 5) clearInterval(timer);
+          }, 2000);
         },
         modal: {
           ondismiss: () => {
@@ -124,6 +135,9 @@ export function ClientShop() {
     <div className="space-y-4">
       {error ? <Alert>{error}</Alert> : null}
       {notice ? <Alert tone="info">{notice}</Alert> : null}
+
+      <BatchChooser key={chooserKey} onResolved={() => setNotice('You’re in! See it under Classes.')} />
+
 
       {products === null ? (
         <p className="text-sm text-ink-500">Loading store…</p>

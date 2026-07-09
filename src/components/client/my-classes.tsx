@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { api, ApiClientError } from '@/lib/api';
 import type { BookingSettingsRow, ClientClass } from '@/lib/admin-types';
 import { Alert, Badge, Button, Card, EmptyState } from '@/components/ui';
+import { BatchChooser } from '@/components/client/batch-chooser';
 
 function fmt(iso: string, tz?: string): string {
   return new Intl.DateTimeFormat(undefined, {
@@ -39,17 +40,25 @@ export function MyClasses() {
 
   if (error) return <Alert>{error}</Alert>;
   if (classes === null) return <p className="text-sm text-ink-500">Loading…</p>;
-  if (classes.length === 0) {
-    return (
-      <EmptyState
-        title="No classes yet"
-        hint="Buy a class from the Shop and it will show up here automatically."
-      />
-    );
-  }
 
   return (
     <div className="space-y-4">
+      <BatchChooser
+        onResolved={() => {
+          api
+            .get<{ classes: ClientClass[] }>('/api/my-classes')
+            .then((d) => setClasses(d.classes))
+            .catch(() => undefined);
+        }}
+      />
+
+      {classes.length === 0 ? (
+        <EmptyState
+          title="No classes yet"
+          hint="Buy a class from the Shop and it will show up here automatically."
+        />
+      ) : null}
+
       {classes.map((c) => {
         const upcoming = c.sessions.filter((s) => new Date(s.endsAt).getTime() >= Date.now());
         const liveNow = c.sessions.find((s) => s.isLive);
