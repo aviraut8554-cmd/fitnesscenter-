@@ -67,7 +67,7 @@ export const GET = handleRoute(async (request) => {
   const { data, error } = await supabase
     .from('products_services')
     .select(
-      '*, batches:classes(*, instructor:team_members(id, name), sessions:class_sessions(*), enrollments(count))',
+      '*, batches:classes!classes_product_id_fkey(*, instructor:team_members(id, name), sessions:class_sessions(*), enrollments(count))',
     )
     .eq('tenant_id', tenantId)
     .order('created_at', { ascending: false });
