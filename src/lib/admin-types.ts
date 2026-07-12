@@ -36,19 +36,54 @@ export type TeamMemberDetail = {
 export type Tenant = Database['public']['Tables']['tenants']['Row'];
 export type Plan = Database['public']['Tables']['plans']['Row'];
 
+/** A single slide in the client PWA home hero carousel. All fields optional. */
+export type HeroCard = {
+  imageUrl?: string;
+  title?: string;
+  subtitle?: string;
+  ctaLabel?: string;
+  /** Where the card button links: an in-app path (e.g. /app/shop) or a URL. */
+  ctaHref?: string;
+};
+
 /** Branding blob stored in `tenants.branding` (jsonb). */
 export type Branding = {
   logoUrl?: string;
   primaryColor?: string;
   tagline?: string;
-  /** Client PWA home hero. All optional; sensible defaults render when unset. */
+  /** Client PWA home hero slides. Empty/unset renders a single default banner. */
+  heroCards?: HeroCard[];
+  /**
+   * Legacy single-hero fields (pre-carousel). Still read for backward
+   * compatibility and normalized into a one-card `heroCards` array; new saves
+   * only write `heroCards`.
+   */
   heroImageUrl?: string;
   heroTitle?: string;
   heroSubtitle?: string;
   heroCtaLabel?: string;
-  /** Where the hero button links: an in-app path (e.g. /app/shop) or a URL. */
   heroCtaHref?: string;
 };
+
+/**
+ * Normalize any stored branding into the hero-card array the UI renders.
+ * Prefers the new `heroCards`; falls back to the legacy single-hero fields so
+ * tenants configured before the carousel keep their banner.
+ */
+export function heroCardsFromBranding(branding: Branding): HeroCard[] {
+  if (branding.heroCards && branding.heroCards.length > 0) {
+    return branding.heroCards;
+  }
+  const legacy: HeroCard = {
+    imageUrl: branding.heroImageUrl,
+    title: branding.heroTitle,
+    subtitle: branding.heroSubtitle,
+    ctaLabel: branding.heroCtaLabel,
+    ctaHref: branding.heroCtaHref,
+  };
+  const hasLegacy = Object.values(legacy).some((v) => typeof v === 'string' && v);
+  return hasLegacy ? [legacy] : [];
+}
 
 /** Razorpay connection status for Settings (never includes secrets). */
 export type RazorpayStatus = {

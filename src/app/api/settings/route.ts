@@ -1,5 +1,5 @@
 import type { Json } from '@/lib/database.types';
-import type { Branding, SettingsResponse } from '@/lib/admin-types';
+import type { Branding, HeroCard, SettingsResponse } from '@/lib/admin-types';
 import { requireTeamMember } from '@/lib/auth';
 import { ApiError, handleRoute, jsonOk, parseJson } from '@/lib/http';
 import { settingsUpdateSchema } from '@/lib/validation';
@@ -7,6 +7,19 @@ import { createAdminSupabase } from '@/lib/supabase/admin';
 import { razorpayStatusForTenant } from '@/lib/razorpay-status';
 
 export const dynamic = 'force-dynamic';
+
+/** Pull a single hero card out of an unknown jsonb object. */
+function toHeroCard(value: unknown): HeroCard {
+  const c = value as Record<string, unknown>;
+  const str = (v: unknown) => (typeof v === 'string' ? v : undefined);
+  const card: HeroCard = {};
+  if (str(c.imageUrl)) card.imageUrl = c.imageUrl as string;
+  if (str(c.title)) card.title = c.title as string;
+  if (str(c.subtitle)) card.subtitle = c.subtitle as string;
+  if (str(c.ctaLabel)) card.ctaLabel = c.ctaLabel as string;
+  if (str(c.ctaHref)) card.ctaHref = c.ctaHref as string;
+  return card;
+}
 
 /** Normalize the stored branding jsonb into the typed subset we expose. */
 function toBranding(value: Json | null): Branding {
@@ -16,6 +29,10 @@ function toBranding(value: Json | null): Branding {
   if (typeof b.logoUrl === 'string') out.logoUrl = b.logoUrl;
   if (typeof b.primaryColor === 'string') out.primaryColor = b.primaryColor;
   if (typeof b.tagline === 'string') out.tagline = b.tagline;
+  if (Array.isArray(b.heroCards)) {
+    out.heroCards = b.heroCards.filter((c) => c && typeof c === 'object').map(toHeroCard);
+  }
+  // Legacy single-hero fields, still surfaced so old tenants keep their banner.
   if (typeof b.heroImageUrl === 'string') out.heroImageUrl = b.heroImageUrl;
   if (typeof b.heroTitle === 'string') out.heroTitle = b.heroTitle;
   if (typeof b.heroSubtitle === 'string') out.heroSubtitle = b.heroSubtitle;
@@ -80,16 +97,26 @@ export const PUT = handleRoute(async (request) => {
   if (input.name !== undefined) patch.name = input.name;
   if (input.subdomain !== undefined) patch.subdomain = input.subdomain;
   if (input.branding !== undefined) {
-    // Drop empty-string logoUrl so clearing the field removes it.
+    // Drop empty-string values so clearing a field removes it. Hero is now an
+    // array of cards; legacy single-hero fields are intentionally not written.
     const b: Branding = {};
     if (input.branding.logoUrl) b.logoUrl = input.branding.logoUrl;
     if (input.branding.primaryColor) b.primaryColor = input.branding.primaryColor;
     if (input.branding.tagline) b.tagline = input.branding.tagline;
-    if (input.branding.heroImageUrl) b.heroImageUrl = input.branding.heroImageUrl;
-    if (input.branding.heroTitle) b.heroTitle = input.branding.heroTitle;
-    if (input.branding.heroSubtitle) b.heroSubtitle = input.branding.heroSubtitle;
-    if (input.branding.heroCtaLabel) b.heroCtaLabel = input.branding.heroCtaLabel;
-    if (input.branding.heroCtaHref) b.heroCtaHref = input.branding.heroCtaHref;
+    if (input.branding.heroCards) {
+      const cards: HeroCard[] = input.branding.heroCards
+        .map((c) => {
+          const card: HeroCard = {};
+          if (c.imageUrl) card.imageUrl = c.imageUrl;
+          if (c.title) card.title = c.title;
+          if (c.subtitle) card.subtitle = c.subtitle;
+          if (c.ctaLabel) card.ctaLabel = c.ctaLabel;
+          if (c.ctaHref) card.ctaHref = c.ctaHref;
+          return card;
+        })
+        .filter((c) => Object.keys(c).length > 0);
+      if (cards.length > 0) b.heroCards = cards;
+    }
     patch.branding = b as Json;
   }
 

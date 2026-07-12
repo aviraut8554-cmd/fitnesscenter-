@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { api, ApiClientError } from '@/lib/api';
-import type { Branding, RazorpayStatus, SettingsResponse } from '@/lib/admin-types';
+import type { Branding, HeroCard, RazorpayStatus, SettingsResponse } from '@/lib/admin-types';
+import { heroCardsFromBranding } from '@/lib/admin-types';
+import { MAX_HERO_CARDS } from '@/lib/validation';
 import { formatMoney } from '@/lib/format';
 import { Alert, Badge, Button, Card, Field } from '@/components/ui';
 import { ImageUploadField } from '@/components/admin/image-upload-field';
@@ -22,11 +24,7 @@ export function SettingsManager() {
   const [logoUrl, setLogoUrl] = useState('');
   const [primaryColor, setPrimaryColor] = useState('');
   const [tagline, setTagline] = useState('');
-  const [heroImageUrl, setHeroImageUrl] = useState('');
-  const [heroTitle, setHeroTitle] = useState('');
-  const [heroSubtitle, setHeroSubtitle] = useState('');
-  const [heroCtaLabel, setHeroCtaLabel] = useState('');
-  const [heroCtaHref, setHeroCtaHref] = useState('');
+  const [heroCards, setHeroCards] = useState<HeroCard[]>([]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -37,11 +35,7 @@ export function SettingsManager() {
     setLogoUrl(s.tenant.branding.logoUrl ?? '');
     setPrimaryColor(s.tenant.branding.primaryColor ?? '');
     setTagline(s.tenant.branding.tagline ?? '');
-    setHeroImageUrl(s.tenant.branding.heroImageUrl ?? '');
-    setHeroTitle(s.tenant.branding.heroTitle ?? '');
-    setHeroSubtitle(s.tenant.branding.heroSubtitle ?? '');
-    setHeroCtaLabel(s.tenant.branding.heroCtaLabel ?? '');
-    setHeroCtaHref(s.tenant.branding.heroCtaHref ?? '');
+    setHeroCards(heroCardsFromBranding(s.tenant.branding));
   }
 
   useEffect(() => {
@@ -68,11 +62,27 @@ export function SettingsManager() {
       logoUrl !== (data.tenant.branding.logoUrl ?? '') ||
       primaryColor !== (data.tenant.branding.primaryColor ?? '') ||
       tagline !== (data.tenant.branding.tagline ?? '') ||
-      heroImageUrl !== (data.tenant.branding.heroImageUrl ?? '') ||
-      heroTitle !== (data.tenant.branding.heroTitle ?? '') ||
-      heroSubtitle !== (data.tenant.branding.heroSubtitle ?? '') ||
-      heroCtaLabel !== (data.tenant.branding.heroCtaLabel ?? '') ||
-      heroCtaHref !== (data.tenant.branding.heroCtaHref ?? ''));
+      JSON.stringify(heroCards) !==
+        JSON.stringify(heroCardsFromBranding(data.tenant.branding)));
+
+  function updateCard(index: number, patch: Partial<HeroCard>) {
+    setHeroCards((cards) => cards.map((c, i) => (i === index ? { ...c, ...patch } : c)));
+  }
+  function addCard() {
+    setHeroCards((cards) => (cards.length >= MAX_HERO_CARDS ? cards : [...cards, {}]));
+  }
+  function removeCard(index: number) {
+    setHeroCards((cards) => cards.filter((_, i) => i !== index));
+  }
+  function moveCard(index: number, dir: -1 | 1) {
+    setHeroCards((cards) => {
+      const target = index + dir;
+      if (target < 0 || target >= cards.length) return cards;
+      const next = [...cards];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  }
 
   async function save() {
     setSaving(true);
@@ -83,11 +93,7 @@ export function SettingsManager() {
       if (logoUrl) branding.logoUrl = logoUrl;
       if (primaryColor) branding.primaryColor = primaryColor;
       if (tagline) branding.tagline = tagline;
-      if (heroImageUrl) branding.heroImageUrl = heroImageUrl;
-      if (heroTitle) branding.heroTitle = heroTitle;
-      if (heroSubtitle) branding.heroSubtitle = heroSubtitle;
-      if (heroCtaLabel) branding.heroCtaLabel = heroCtaLabel;
-      if (heroCtaHref) branding.heroCtaHref = heroCtaHref;
+      branding.heroCards = heroCards;
       const res = await api.put<{ tenant: TenantPatch }>('/api/settings', {
         name,
         subdomain,
@@ -174,59 +180,30 @@ export function SettingsManager() {
                 Client home hero
               </h3>
               <p className="mt-1 text-xs text-ink-400">
-                The banner clients see at the top of their app home. Leave blank for a default.
+                Cards clients swipe through at the top of their app home. Add up to{' '}
+                {MAX_HERO_CARDS}. Leave empty for a default banner.
               </p>
             </div>
-            <ImageUploadField
-              label="Hero image URL"
-              value={heroImageUrl}
-              onValueChange={setHeroImageUrl}
-              placeholder="https://…/banner.jpg"
-            />
-            <Field
-              label="Headline"
-              value={heroTitle}
-              onChange={(e) => setHeroTitle(e.target.value)}
-              placeholder="Let's get to work."
-            />
-            <Field
-              label="Subtext"
-              value={heroSubtitle}
-              onChange={(e) => setHeroSubtitle(e.target.value)}
-              placeholder="Your training, classes and progress — all in one place."
-            />
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field
-                label="Button label"
-                value={heroCtaLabel}
-                onChange={(e) => setHeroCtaLabel(e.target.value)}
-                placeholder="Browse plans"
+
+            {heroCards.map((card, i) => (
+              <HeroCardEditor
+                key={i}
+                index={i}
+                total={heroCards.length}
+                card={card}
+                onChange={(patch) => updateCard(i, patch)}
+                onRemove={() => removeCard(i)}
+                onMove={(dir) => moveCard(i, dir)}
               />
-              <label className="block">
-                <span className="mb-1.5 block text-sm font-medium text-ink-700">Button link</span>
-                <select
-                  value={HERO_LINK_PRESETS.includes(heroCtaHref) ? heroCtaHref : 'custom'}
-                  onChange={(e) =>
-                    setHeroCtaHref(e.target.value === 'custom' ? '' : e.target.value)
-                  }
-                  className="w-full rounded-lg border border-ink-200 bg-white px-3.5 py-2.5 text-sm text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
-                >
-                  <option value="/app/shop">Shop</option>
-                  <option value="/app/book">Book a consultation</option>
-                  <option value="/app/classes">Classes</option>
-                  <option value="/app/health">Health &amp; progress</option>
-                  <option value="custom">Custom URL…</option>
-                </select>
-              </label>
-            </div>
-            {!HERO_LINK_PRESETS.includes(heroCtaHref) ? (
-              <Field
-                label="Custom link"
-                value={heroCtaHref}
-                onChange={(e) => setHeroCtaHref(e.target.value)}
-                placeholder="/app/shop or https://…"
-              />
-            ) : null}
+            ))}
+
+            {heroCards.length < MAX_HERO_CARDS ? (
+              <Button type="button" variant="secondary" onClick={addCard}>
+                {heroCards.length === 0 ? 'Add hero card' : 'Add another card'}
+              </Button>
+            ) : (
+              <p className="text-xs text-ink-400">Maximum of {MAX_HERO_CARDS} cards reached.</p>
+            )}
           </div>
 
           {error ? <Alert>{error}</Alert> : null}
@@ -278,6 +255,106 @@ export function SettingsManager() {
           onChange={(s) => setData((prev) => (prev ? { ...prev, razorpay: s } : prev))}
         />
       </div>
+    </div>
+  );
+}
+
+/** Editor for a single hero card: image + text + CTA, with reorder/remove. */
+function HeroCardEditor({
+  index,
+  total,
+  card,
+  onChange,
+  onRemove,
+  onMove,
+}: {
+  index: number;
+  total: number;
+  card: HeroCard;
+  onChange: (patch: Partial<HeroCard>) => void;
+  onRemove: () => void;
+  onMove: (dir: -1 | 1) => void;
+}) {
+  const ctaHref = card.ctaHref ?? '';
+  const isPreset = HERO_LINK_PRESETS.includes(ctaHref);
+  return (
+    <div className="space-y-4 rounded-xl border border-ink-200 bg-ink-50/50 p-4">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold uppercase tracking-wide text-ink-500">
+          Card {index + 1}
+        </span>
+        <div className="flex items-center gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => onMove(-1)}
+            disabled={index === 0}
+            aria-label="Move card up"
+          >
+            ↑
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => onMove(1)}
+            disabled={index === total - 1}
+            aria-label="Move card down"
+          >
+            ↓
+          </Button>
+          <Button type="button" variant="ghost" onClick={onRemove} aria-label="Remove card">
+            Remove
+          </Button>
+        </div>
+      </div>
+      <ImageUploadField
+        label="Hero image URL"
+        value={card.imageUrl ?? ''}
+        onValueChange={(url) => onChange({ imageUrl: url })}
+        placeholder="https://…/banner.jpg"
+      />
+      <Field
+        label="Headline"
+        value={card.title ?? ''}
+        onChange={(e) => onChange({ title: e.target.value })}
+        placeholder="Let's get to work."
+      />
+      <Field
+        label="Subtext"
+        value={card.subtitle ?? ''}
+        onChange={(e) => onChange({ subtitle: e.target.value })}
+        placeholder="Your training, classes and progress — all in one place."
+      />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field
+          label="Button label"
+          value={card.ctaLabel ?? ''}
+          onChange={(e) => onChange({ ctaLabel: e.target.value })}
+          placeholder="Browse plans"
+        />
+        <label className="block">
+          <span className="mb-1.5 block text-sm font-medium text-ink-700">Button link</span>
+          <select
+            value={isPreset ? ctaHref : 'custom'}
+            onChange={(e) => onChange({ ctaHref: e.target.value === 'custom' ? '' : e.target.value })}
+            className="w-full rounded-lg border border-ink-200 bg-white px-3.5 py-2.5 text-sm text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+          >
+            <option value="/app/shop">Shop</option>
+            <option value="/app/book">Book a consultation</option>
+            <option value="/app/classes">Classes</option>
+            <option value="/app/health">Health &amp; progress</option>
+            <option value="custom">Custom URL…</option>
+          </select>
+        </label>
+      </div>
+      {!isPreset ? (
+        <Field
+          label="Custom link"
+          value={ctaHref}
+          onChange={(e) => onChange({ ctaHref: e.target.value })}
+          placeholder="/app/shop or https://…"
+        />
+      ) : null}
     </div>
   );
 }

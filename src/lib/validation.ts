@@ -95,6 +95,16 @@ const hrefSchema = z
     message: 'Use an in-app path (e.g. /app/shop) or a full https:// URL',
   });
 
+export const MAX_HERO_CARDS = 5;
+
+export const heroCardSchema = z.object({
+  imageUrl: z.string().url().max(2000).or(z.literal('')).optional(),
+  title: z.string().max(80).optional(),
+  subtitle: z.string().max(160).optional(),
+  ctaLabel: z.string().max(40).optional(),
+  ctaHref: hrefSchema.optional(),
+});
+
 export const brandingSchema = z.object({
   logoUrl: z.string().url().max(2000).or(z.literal('')).optional(),
   primaryColor: z
@@ -102,11 +112,7 @@ export const brandingSchema = z.object({
     .regex(/^#([0-9a-fA-F]{6})$/, { message: 'Use a 6-digit hex colour, e.g. #FF5A1F' })
     .optional(),
   tagline: z.string().max(160).optional(),
-  heroImageUrl: z.string().url().max(2000).or(z.literal('')).optional(),
-  heroTitle: z.string().max(80).optional(),
-  heroSubtitle: z.string().max(160).optional(),
-  heroCtaLabel: z.string().max(40).optional(),
-  heroCtaHref: hrefSchema.optional(),
+  heroCards: z.array(heroCardSchema).max(MAX_HERO_CARDS).optional(),
 });
 export type BrandingInput = z.infer<typeof brandingSchema>;
 

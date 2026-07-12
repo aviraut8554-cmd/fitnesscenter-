@@ -1,21 +1,16 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { friendlyError } from '@/lib/client-errors';
-import type { ClientClass, ClientSession } from '@/lib/admin-types';
+import type { ClientClass, ClientSession, HeroCard } from '@/lib/admin-types';
 import { Alert, Button, Card, Skeleton } from '@/components/ui';
 import { BatchChooser } from '@/components/client/batch-chooser';
 import { PullToRefresh } from '@/components/client/pull-to-refresh';
 
-export type HomeHero = {
-  title?: string;
-  subtitle?: string;
-  imageUrl?: string;
-  ctaLabel?: string;
-  ctaHref?: string;
-};
+/** How long each hero card shows before auto-advancing. */
+const AUTO_ADVANCE_MS = 5000;
 
 const QUICK_ACTIONS = [
   { label: 'Shop plans', href: '/app/shop', desc: 'Browse and buy programs' },
@@ -71,7 +66,13 @@ function summarize(classes: ClientClass[]): Summary {
   };
 }
 
-export function ClientHome({ fullName, hero }: { fullName: string; hero: HomeHero }) {
+export function ClientHome({
+  fullName,
+  heroCards,
+}: {
+  fullName: string;
+  heroCards: HeroCard[];
+}) {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -103,45 +104,10 @@ export function ClientHome({ fullName, hero }: { fullName: string; hero: HomeHer
 
   const next = summary?.next ?? null;
 
-  const ctaHref = hero.ctaHref || '/app/shop';
-  const ctaLabel = hero.ctaLabel || 'Browse plans';
-  const title = hero.title || "Let's get to work.";
-  const subtitle = hero.subtitle || 'Your training, classes and progress — all in one place.';
-  const isExternal = /^https?:\/\//.test(ctaHref);
-
   return (
     <PullToRefresh onRefresh={load}>
     <div className="space-y-4">
-      {/* Hero / momentum banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-ink-900 p-5 text-white">
-        {hero.imageUrl ? (
-          <>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={hero.imageUrl}
-              alt=""
-              className="absolute inset-0 h-full w-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-black/30" />
-          </>
-        ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-brand-600 via-ink-900 to-ink-900" />
-        )}
-        <div className="relative">
-          <p className="text-sm font-medium text-white/80">Hi, {firstName(fullName)} 👋</p>
-          <h1 className="mt-1 text-2xl font-bold leading-tight">{title}</h1>
-          <p className="mt-1 max-w-sm text-sm text-white/80">{subtitle}</p>
-          {isExternal ? (
-            <a href={ctaHref} target="_blank" rel="noreferrer" className="mt-4 inline-block">
-              <Button className="rounded-full">{ctaLabel}</Button>
-            </a>
-          ) : (
-            <Link href={ctaHref} className="mt-4 inline-block">
-              <Button className="rounded-full">{ctaLabel}</Button>
-            </Link>
-          )}
-        </div>
-      </div>
+      <HeroCarousel fullName={fullName} cards={heroCards} />
 
       {error ? <Alert>{error}</Alert> : null}
 
@@ -205,5 +171,118 @@ export function ClientHome({ fullName, hero }: { fullName: string; hero: HomeHer
       </div>
     </div>
     </PullToRefresh>
+  );
+}
+
+/**
+ * Swipeable hero at the top of the client home. Renders each card as a
+ * full-width, scroll-snapped slide; supports touch/drag swipe, dot indicators,
+ * and auto-advance (paused while the user is interacting). Falls back to a
+ * single default banner when no cards are configured.
+ */
+function HeroCarousel({ fullName, cards }: { fullName: string; cards: HeroCard[] }) {
+  const slides = cards.length > 0 ? cards : [{} as HeroCard];
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const [active, setActive] = useState(0);
+  const [paused, setPaused] = useState(false);
+
+  const goTo = useCallback((index: number) => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    el.scrollTo({ left: index * el.clientWidth, behavior: 'smooth' });
+  }, []);
+
+  // Auto-advance through slides; pauses on touch/hover and when >1 slide only.
+  useEffect(() => {
+    if (slides.length <= 1 || paused) return;
+    const id = setInterval(() => {
+      const el = scrollerRef.current;
+      if (!el) return;
+      const nextIndex = (Math.round(el.scrollLeft / el.clientWidth) + 1) % slides.length;
+      el.scrollTo({ left: nextIndex * el.clientWidth, behavior: 'smooth' });
+    }, AUTO_ADVANCE_MS);
+    return () => clearInterval(id);
+  }, [slides.length, paused]);
+
+  function onScroll() {
+    const el = scrollerRef.current;
+    if (!el) return;
+    setActive(Math.round(el.scrollLeft / el.clientWidth));
+  }
+
+  return (
+    <div
+      className="relative"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onTouchStart={() => setPaused(true)}
+      onTouchEnd={() => setPaused(false)}
+    >
+      <div
+        ref={scrollerRef}
+        onScroll={onScroll}
+        className="flex snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {slides.map((card, i) => (
+          <div key={i} className="w-full shrink-0 snap-center">
+            <HeroSlide fullName={fullName} card={card} />
+          </div>
+        ))}
+      </div>
+
+      {slides.length > 1 ? (
+        <div className="mt-3 flex items-center justify-center gap-2">
+          {slides.map((_, i) => (
+            <button
+              key={i}
+              type="button"
+              aria-label={`Go to slide ${i + 1}`}
+              aria-current={i === active}
+              onClick={() => goTo(i)}
+              className={`h-2 rounded-full transition-all ${
+                i === active ? 'w-6 bg-brand-500' : 'w-2 bg-ink-300'
+              }`}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** A single hero slide: background image or gradient + greeting, text and CTA. */
+function HeroSlide({ fullName, card }: { fullName: string; card: HeroCard }) {
+  const ctaHref = card.ctaHref || '/app/shop';
+  const ctaLabel = card.ctaLabel || 'Browse plans';
+  const title = card.title || "Let's get to work.";
+  const subtitle = card.subtitle || 'Your training, classes and progress — all in one place.';
+  const isExternal = /^https?:\/\//.test(ctaHref);
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl bg-ink-900 p-5 text-white">
+      {card.imageUrl ? (
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={card.imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-black/30" />
+        </>
+      ) : (
+        <div className="absolute inset-0 bg-gradient-to-br from-brand-600 via-ink-900 to-ink-900" />
+      )}
+      <div className="relative">
+        <p className="text-sm font-medium text-white/80">Hi, {firstName(fullName)} 👋</p>
+        <h1 className="mt-1 text-2xl font-bold leading-tight">{title}</h1>
+        <p className="mt-1 max-w-sm text-sm text-white/80">{subtitle}</p>
+        {isExternal ? (
+          <a href={ctaHref} target="_blank" rel="noreferrer" className="mt-4 inline-block">
+            <Button className="rounded-full">{ctaLabel}</Button>
+          </a>
+        ) : (
+          <Link href={ctaHref} className="mt-4 inline-block">
+            <Button className="rounded-full">{ctaLabel}</Button>
+          </Link>
+        )}
+      </div>
+    </div>
   );
 }
