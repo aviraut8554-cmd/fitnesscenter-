@@ -112,10 +112,11 @@ export async function enqueueNotifications(input: EnqueueInput): Promise<number>
 export async function dispatchPending(
   admin: AdminSupabase,
   filter: { ids?: string[]; tenantId?: string; limit?: number } = {},
+  options: { allowLogFallback?: boolean } = {},
 ): Promise<{ sent: number; failed: number }> {
   let query = admin
     .from('notifications')
-    .select('id, channel, recipient, subject, body')
+    .select('id, tenant_id, channel, recipient, subject, body')
     .eq('status', 'pending')
     .order('created_at', { ascending: true })
     .limit(filter.limit ?? 500);
@@ -135,17 +136,27 @@ export async function dispatchPending(
         .eq('id', n.id);
       continue;
     }
-    const result = await dispatch({
-      channel: n.channel as Channel,
-      recipient: n.recipient,
-      subject: n.subject,
-      body: n.body,
-    });
+    const result = await dispatch(
+      admin,
+      n.tenant_id,
+      {
+        channel: n.channel as Channel,
+        recipient: n.recipient,
+        subject: n.subject,
+        body: n.body,
+      },
+      options,
+    );
     if (result.ok) {
       sent += 1;
       await admin
         .from('notifications')
         .update({ status: 'sent', sent_at: new Date().toISOString(), error: null })
+        .eq('id', n.id);
+    } else if (result.reason === 'not_configured') {
+      await admin
+        .from('notifications')
+        .update({ status: 'skipped', error: result.error })
         .eq('id', n.id);
     } else {
       failed += 1;
@@ -162,5 +173,7 @@ export async function dispatchPending(
  */
 export async function fireEvent(input: EnqueueInput): Promise<void> {
   const queued = await enqueueNotifications(input);
-  if (queued > 0) await dispatchPending(input.admin, { tenantId: input.tenantId });
+  if (queued > 0) {
+    await dispatchPending(input.admin, { tenantId: input.tenantId }, { allowLogFallback: false });
+  }
 }

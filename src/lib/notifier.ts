@@ -1,13 +1,6 @@
 import { env } from '@/lib/env';
-
-/**
- * Channel dispatchers. Each channel (email, WhatsApp) has a provider that is
- * only used when its credentials are configured; otherwise the dispatcher runs
- * in **dry-run/log mode** — it logs the message and reports success without
- * calling any external API. This lets the whole automation engine be exercised
- * end-to-end (rules → outbox → "sent") in local/CI without live providers, and
- * flips to real delivery the moment the env vars are present.
- */
+import { emailConfigForTenant, sendEmail } from '@/lib/email-provider';
+import type { AdminSupabase } from '@/lib/supabase/admin';
 
 export type Channel = 'email' | 'whatsapp';
 
@@ -20,47 +13,25 @@ export interface DispatchMessage {
 
 export type DispatchResult =
   | { ok: true; mode: 'log' | 'live'; providerId?: string }
-  | { ok: false; error: string };
+  | { ok: false; error: string; reason: 'not_configured' | 'provider_error' };
 
-export function isChannelConfigured(channel: Channel): boolean {
-  if (channel === 'email') return Boolean(env.RESEND_API_KEY && env.EMAIL_FROM);
-  return Boolean(env.WHATSAPP_TOKEN && env.WHATSAPP_PHONE_ID);
-}
-
-async function sendEmail(msg: DispatchMessage): Promise<DispatchResult> {
-  if (!env.RESEND_API_KEY || !env.EMAIL_FROM) {
-    console.info('[notifier:email:dry-run]', { to: msg.recipient, subject: msg.subject });
-    return { ok: true, mode: 'log' };
-  }
-  try {
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        authorization: `Bearer ${env.RESEND_API_KEY}`,
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: env.EMAIL_FROM,
-        to: msg.recipient,
-        subject: msg.subject ?? 'Notification',
-        text: msg.body,
-      }),
-    });
-    if (!res.ok) return { ok: false, error: `email provider ${res.status}: ${await res.text()}` };
-    const data = (await res.json()) as { id?: string };
-    return { ok: true, mode: 'live', providerId: data.id };
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'email send failed' };
-  }
-}
-
-async function sendWhatsApp(msg: DispatchMessage): Promise<DispatchResult> {
+async function sendWhatsApp(
+  msg: DispatchMessage,
+  allowLogFallback: boolean,
+): Promise<DispatchResult> {
   if (!env.WHATSAPP_TOKEN || !env.WHATSAPP_PHONE_ID) {
-    console.info('[notifier:whatsapp:dry-run]', { to: msg.recipient });
-    return { ok: true, mode: 'log' };
+    if (allowLogFallback) {
+      console.info('[notifier:whatsapp:dry-run]', { to: msg.recipient });
+      return { ok: true, mode: 'log' };
+    }
+    return {
+      ok: false,
+      reason: 'not_configured',
+      error: 'WhatsApp delivery is not configured',
+    };
   }
   try {
-    const res = await fetch(
+    const response = await fetch(
       `https://graph.facebook.com/v20.0/${env.WHATSAPP_PHONE_ID}/messages`,
       {
         method: 'POST',
@@ -76,15 +47,41 @@ async function sendWhatsApp(msg: DispatchMessage): Promise<DispatchResult> {
         }),
       },
     );
-    if (!res.ok) return { ok: false, error: `whatsapp provider ${res.status}: ${await res.text()}` };
-    const data = (await res.json()) as { messages?: { id?: string }[] };
+    if (!response.ok) {
+      return {
+        ok: false,
+        reason: 'provider_error',
+        error: `WhatsApp provider ${response.status}: ${await response.text()}`,
+      };
+    }
+    const data = (await response.json()) as { messages?: { id?: string }[] };
     return { ok: true, mode: 'live', providerId: data.messages?.[0]?.id };
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'whatsapp send failed' };
+  } catch (error) {
+    return {
+      ok: false,
+      reason: 'provider_error',
+      error: error instanceof Error ? error.message : 'WhatsApp send failed',
+    };
   }
 }
 
-/** Send one message on its channel, returning a structured result. */
-export function dispatch(msg: DispatchMessage): Promise<DispatchResult> {
-  return msg.channel === 'email' ? sendEmail(msg) : sendWhatsApp(msg);
+/** Deliver one message using tenant credentials, with optional local/CI log mode. */
+export async function dispatch(
+  admin: AdminSupabase,
+  tenantId: string,
+  msg: DispatchMessage,
+  options: { allowLogFallback?: boolean } = {},
+): Promise<DispatchResult> {
+  const allowLogFallback = options.allowLogFallback ?? true;
+  if (msg.channel === 'whatsapp') return sendWhatsApp(msg, allowLogFallback);
+
+  const config = await emailConfigForTenant(admin, tenantId);
+  if (!config && allowLogFallback) {
+    console.info('[notifier:email:dry-run]', { to: msg.recipient, subject: msg.subject });
+    return { ok: true, mode: 'log' };
+  }
+  const result = await sendEmail(config, msg);
+  return result.ok
+    ? { ok: true, mode: 'live', providerId: result.providerId }
+    : result;
 }

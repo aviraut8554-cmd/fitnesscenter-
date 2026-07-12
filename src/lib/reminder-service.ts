@@ -209,7 +209,7 @@ export async function runReminders(
     });
   }
 
-  const { sent, failed } = await dispatchPending(admin, {});
+  const { sent, failed } = await dispatchPending(admin, {}, { allowLogFallback: false });
   summary.sent = sent;
   summary.failed = failed;
   return summary;

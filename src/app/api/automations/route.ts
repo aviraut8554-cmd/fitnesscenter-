@@ -1,6 +1,8 @@
 import { requireTeamMember } from '@/lib/auth';
 import { ApiError, handleRoute, jsonOk, parseJson } from '@/lib/http';
 import { automationRuleUpsertSchema } from '@/lib/validation';
+import { createAdminSupabase } from '@/lib/supabase/admin';
+import { emailStatusForTenant } from '@/lib/email-provider';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,7 +17,8 @@ export const GET = handleRoute(async (request) => {
     .order('trigger_type', { ascending: true });
   if (error) throw ApiError.unprocessable(error.message);
 
-  return jsonOk({ rules: data ?? [] });
+  const email = await emailStatusForTenant(createAdminSupabase(), tenantId);
+  return jsonOk({ rules: data ?? [], email });
 });
 
 /**
@@ -26,6 +29,13 @@ export const GET = handleRoute(async (request) => {
 export const PUT = handleRoute(async (request) => {
   const { supabase, tenantId } = await requireTeamMember(request, ['owner', 'manager']);
   const input = await parseJson(request, automationRuleUpsertSchema);
+
+  if (input.channel === 'email' && input.enabled) {
+    const status = await emailStatusForTenant(createAdminSupabase(), tenantId);
+    if (!status.configured) {
+      throw ApiError.unprocessable('Connect Resend before enabling email automations');
+    }
+  }
 
   const { data, error } = await supabase
     .from('automation_rules')

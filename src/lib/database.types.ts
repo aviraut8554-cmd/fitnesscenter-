@@ -1198,6 +1198,44 @@ export type Database = {
           },
         ]
       }
+      tenant_email_credentials: {
+        Row: {
+          api_key_enc: string
+          connected_at: string
+          from_email: string
+          from_name: string | null
+          provider: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          api_key_enc: string
+          connected_at?: string
+          from_email: string
+          from_name?: string | null
+          provider?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          api_key_enc?: string
+          connected_at?: string
+          from_email?: string
+          from_name?: string | null
+          provider?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_email_credentials_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_payment_credentials: {
         Row: {
           connected_at: string

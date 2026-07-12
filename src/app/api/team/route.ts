@@ -2,7 +2,7 @@ import { requireTeamMember } from '@/lib/auth';
 import { createAdminSupabase } from '@/lib/supabase/admin';
 import { ApiError, handleRoute, jsonOk, parseJson } from '@/lib/http';
 import { teamInviteSchema } from '@/lib/validation';
-import { dispatch, isChannelConfigured } from '@/lib/notifier';
+import { dispatch } from '@/lib/notifier';
 
 export const dynamic = 'force-dynamic';
 
@@ -71,7 +71,7 @@ export const GET = handleRoute(async (request) => {
  * Invite a team member (owner only). Instead of setting a temporary password,
  * we generate a Supabase invite link and email it so the member sets their own
  * password. The link is also returned so the owner can share it manually when
- * no email provider is configured (dry-run). Seat limits per plan are enforced
+ * no email provider is configured. Seat limits per plan are enforced
  * here, server-side.
  */
 export const POST = handleRoute(async (request) => {
@@ -125,15 +125,26 @@ export const POST = handleRoute(async (request) => {
   }
 
   const brand = tenant?.name ?? 'the team';
+  let emailSent = false;
   if (inviteLink) {
-    await dispatch({
-      channel: 'email',
-      recipient: input.email,
-      subject: `You've been invited to join ${brand}`,
-      body:
-        `Hi ${input.name},\n\nYou've been added to ${brand} as a ${input.role}. ` +
-        `Set your password to get started:\n\n${inviteLink}\n\nThis link expires for security.`,
-    });
+    try {
+      const result = await dispatch(
+        admin,
+        tenantId,
+        {
+          channel: 'email',
+          recipient: input.email,
+          subject: `You've been invited to join ${brand}`,
+          body:
+            `Hi ${input.name},\n\nYou've been added to ${brand} as a ${input.role}. ` +
+            `Set your password to get started:\n\n${inviteLink}\n\nThis link expires for security.`,
+        },
+        { allowLogFallback: false },
+      );
+      emailSent = result.ok;
+    } catch (error) {
+      console.error('team invite email failed:', error);
+    }
   }
 
   await admin.from('audit_log').insert({
@@ -149,7 +160,7 @@ export const POST = handleRoute(async (request) => {
     {
       teamMember: member.data,
       inviteLink,
-      emailSent: isChannelConfigured('email'),
+      emailSent,
     },
     201,
   );
