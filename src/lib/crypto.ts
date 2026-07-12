@@ -3,7 +3,7 @@ import { env } from '@/lib/env';
 import { ApiError } from '@/lib/http';
 
 /**
- * Symmetric encryption for secrets at rest (per-tenant payment credentials).
+ * Symmetric encryption for per-tenant provider secrets at rest.
  *
  * Algorithm: AES-256-GCM. The 32-byte key comes from SETTINGS_ENCRYPTION_KEY
  * (hex or base64). Each ciphertext is self-describing: we store
@@ -22,7 +22,7 @@ function requireKey(): Buffer {
     throw new ApiError(
       500,
       'encryption_not_configured',
-      'Encryption is not configured: set SETTINGS_ENCRYPTION_KEY (32-byte hex or base64) to store payment keys',
+      'Encryption is not configured: set SETTINGS_ENCRYPTION_KEY (32-byte hex or base64) to store provider credentials',
     );
   }
   // Accept hex (64 chars) or base64; both must decode to exactly 32 bytes.

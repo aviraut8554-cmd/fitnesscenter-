@@ -16,7 +16,7 @@ export default async function AutomationsPage() {
         title="Automations"
         subtitle="Welcome messages, payment receipts, and daily class/booking/renewal reminders"
       />
-      <AutomationsManager />
+      <AutomationsManager canManageEmail={membership.role === 'owner'} />
     </div>
   );
 }

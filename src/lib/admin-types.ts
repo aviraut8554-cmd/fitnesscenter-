@@ -107,6 +107,16 @@ export type SettingsResponse = {
   razorpay: RazorpayStatus;
 };
 
+/** Secret-free Resend connection status shown on the Automations page. */
+export type EmailProviderStatus = {
+  configured: boolean;
+  source: 'tenant' | 'env' | null;
+  provider: 'resend';
+  fromEmail: string | null;
+  fromName: string | null;
+  encryptionReady: boolean;
+};
+
 /** `GET /api/me` → the signed-in client's own account. */
 export type MeResponse = {
   client: { id: string; full_name: string; email: string | null; phone: string | null };

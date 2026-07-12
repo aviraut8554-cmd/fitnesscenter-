@@ -145,6 +145,24 @@ export const razorpayConnectSchema = z.object({
 });
 export type RazorpayConnectInput = z.infer<typeof razorpayConnectSchema>;
 
+/** Owner connecting a tenant Resend account for automation emails. */
+export const emailProviderConnectSchema = z.object({
+  apiKey: z
+    .string()
+    .trim()
+    .regex(/^re_[A-Za-z0-9_\-]+$/, { message: 'Resend API key must start with re_' })
+    .max(256),
+  fromEmail: z.string().trim().email().max(320),
+  fromName: z.string().trim().max(120).optional(),
+});
+export type EmailProviderConnectInput = z.infer<typeof emailProviderConnectSchema>;
+
+/** Recipient for the owner-only provider connection test. */
+export const emailProviderTestSchema = z.object({
+  recipient: z.string().trim().email().max(320),
+});
+export type EmailProviderTestInput = z.infer<typeof emailProviderTestSchema>;
+
 /** A client editing their own account (PWA profile). */
 export const clientProfileUpdateSchema = z
   .object({
